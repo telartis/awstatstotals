@@ -1,4 +1,4 @@
-# AWStats Totals 1.19
+# AWStats Totals 1.20
 
 AWStats Totals is a simple php script to view the AWStats totals (Unique visitors, Number of visits, Pages, Hits and Bandwidth) of multiple sites. 
 The page has a month selection input form and you can sort on each column. It also includes a php wrapper script.
