@@ -9,4 +9,5 @@ and cross site scripting attacks. A remote attacker could exploit these
 vulnerabilities to run arbitrary commands on the system with the
 permissions of the web server. Please upgrade to version 1.15 or higher.
 
-AWStats official web site: https://www.awstats.org/
+- AWStats official website: https://www.awstats.org/
+- AWStats Totals website: https://www.telartis.nl/en/awstats
