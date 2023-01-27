@@ -135,14 +135,15 @@ class awstatstotals
             }
         }
 
-        $visits_total               = 0;
-        $unique_total               = 0;
-        $pages_total                = 0;
-        $hits_total                 = 0;
-        $bandwidth_total            = 0;
-        $not_viewed_pages_total     = 0;
-        $not_viewed_hits_total      = 0;
-        $not_viewed_bandwidth_total = 0;
+        $totals = [];
+        $totals['visits_total']               = 0;
+        $totals['unique_total']               = 0;
+        $totals['pages_total']                = 0;
+        $totals['hits_total']                 = 0;
+        $totals['bandwidth_total']            = 0;
+        $totals['not_viewed_pages_total']     = 0;
+        $totals['not_viewed_hits_total']      = 0;
+        $totals['not_viewed_bandwidth_total'] = 0;
 
         $rows = [];
         if ($files) {
@@ -159,16 +160,16 @@ class awstatstotals
                         $row['bandwidth'] += $row['not_viewed_bandwidth'];
                     }
 
-                    $visits_total    += $row['visits'];
-                    $unique_total    += $row['unique'];
-                    $pages_total     += $row['pages'];
-                    $hits_total      += $row['hits'];
-                    $bandwidth_total += $row['bandwidth'];
+                    $totals['visits_total']    += $row['visits'];
+                    $totals['unique_total']    += $row['unique'];
+                    $totals['pages_total']     += $row['pages'];
+                    $totals['hits_total']      += $row['hits'];
+                    $totals['bandwidth_total'] += $row['bandwidth'];
 
                     if ($this->NotViewed == 'columns') {
-                        $not_viewed_pages_total     += $row['not_viewed_pages'];
-                        $not_viewed_hits_total      += $row['not_viewed_hits'];
-                        $not_viewed_bandwidth_total += $row['not_viewed_bandwidth'];
+                        $totals['not_viewed_pages_total']     += $row['not_viewed_pages'];
+                        $totals['not_viewed_hits_total']      += $row['not_viewed_hits'];
+                        $totals['not_viewed_bandwidth_total'] += $row['not_viewed_bandwidth'];
                     }
                 }
                 if ( isset($row['config']) && isset($row_prev['config']) && ($row['config'] == $row_prev['config']) ) {
@@ -233,7 +234,7 @@ class awstatstotals
             $message[161] = 'Not viewed traffic';
         }
 
-        echo $this->fetch($month, $year, $rows, $message);
+        echo $this->fetch($month, $year, $rows, $totals, $message);
     }
 
     /**
@@ -541,11 +542,13 @@ href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></cent
     /**
      * Fetch HTML table body
      *
+     * @param  array    $rows
+     * @param  array    $totals
      * @param  string   $url
      * @param  array    $message
      * @return string
      */
-    public function fetch_table_body($rows, $url, $message)
+    public function fetch_table_body($rows, $totals, $url, $message)
     {
         $html = '';
         foreach ($rows as $row) {
@@ -566,16 +569,16 @@ href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></cent
         }
         $html .= '<tr>'.
             '<td bgcolor="#ECECEC" class="l">&nbsp;Total'.
-            '<td bgcolor="#ECECEC">'.$this->num_format($unique_total).
-            '<td bgcolor="#ECECEC">'.$this->num_format($visits_total).
-            '<td bgcolor="#ECECEC">'.$this->num_format($pages_total).
-            '<td bgcolor="#ECECEC">'.$this->num_format($hits_total).
-            '<td bgcolor="#ECECEC">'.$this->byte_format($bandwidth_total);
+            '<td bgcolor="#ECECEC">'.$this->num_format($totals['unique_total']).
+            '<td bgcolor="#ECECEC">'.$this->num_format($totals['visits_total']).
+            '<td bgcolor="#ECECEC">'.$this->num_format($totals['pages_total']).
+            '<td bgcolor="#ECECEC">'.$this->num_format($totals['hits_total']).
+            '<td bgcolor="#ECECEC">'.$this->byte_format($totals['bandwidth_total']);
         if ($this->NotViewed == 'columns') {
             $html .=
-            '<td bgcolor="#ECECEC">'.$this->num_format($not_viewed_pages_total).
-            '<td bgcolor="#ECECEC">'.$this->num_format($not_viewed_hits_total).
-            '<td bgcolor="#ECECEC">'.$this->byte_format($not_viewed_bandwidth_total);
+            '<td bgcolor="#ECECEC">'.$this->num_format($totals['not_viewed_pages_total']).
+            '<td bgcolor="#ECECEC">'.$this->num_format($totals['not_viewed_hits_total']).
+            '<td bgcolor="#ECECEC">'.$this->byte_format($totals['not_viewed_bandwidth_total']);
         }
         $html .= "\n";
 
@@ -588,10 +591,11 @@ href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></cent
      * @param  integer  $month
      * @param  integer  $year
      * @param  array    $rows
+     * @param  array    $totals
      * @param  array    $message
      * @return string
      */
-    public function fetch($month, $year, $rows, $message)
+    public function fetch($month, $year, $rows, $totals, $message)
     {
         $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL', FILTER_SANITIZE_STRING);
         $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
@@ -599,7 +603,7 @@ href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></cent
         $html  = $this->fetch_form($script_url, $month, $year, $message);
         $html .= '<table align="center">'."\n";
         $html .= $this->fetch_table_header($sort_url, $message);
-        $html .= $this->fetch_table_body($rows, $config_url, $message);
+        $html .= $this->fetch_table_body($rows, $totals, $config_url, $message);
         $html .= '</table>'."\n";
 
         return str_replace('[content]', $html, $this->fetch_template());
