@@ -5,11 +5,10 @@
  * (Unique visitors, Number of visits, Pages, Hits, Bandwidth)
  * for multiple sites per month with sort options.
  *
- * @author      Jeroen de Jong <jeroen@telartis.nl>
- * @copyright   2004-2023 Telartis BV
- * @version     1.19
- *
- * @link        https://www.telartis.nl/en/awstats
+ * @author     Jeroen de Jong <jeroen@telartis.nl>
+ * @copyright  2004-2023 Telartis BV
+ * @version    1.19
+ * @link       https://www.telartis.nl/en/awstats
  *
  * Changelog:
  * 1.0  initial version
