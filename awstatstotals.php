@@ -127,9 +127,9 @@ class awstatstotals
     /**
      * Main program
      *
-     * @return string   Echoed HTML
+     * @return void     Echoed HTML
      */
-    public function main(): string
+    public function main(): void
     {
         $sort  = isset($_GET['sort'])  ? preg_replace('/[^_a-z]/', '', $_GET['sort']) : $this->sort_default;
         $year  = isset($_GET['year'])  ? (int) $_GET['year']  : (int) date('Y');
