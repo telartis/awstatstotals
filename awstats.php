@@ -1,19 +1,22 @@
 <?php declare(strict_types=1);
 
 /**
- * Project:    AWStats PHP Wrapper Script
- * Install:    In your AWStats.conf set the following:
- *             WrapperScript="awstats.php"
+ * Project:    AWStats PHP Wrapper Class
  * File:       awstats.php
  * @author     Jeroen de Jong <jeroen@telartis.nl>
  * @copyright  2004-2023 Telartis BV
  * @version    1.4
  * @link       https://www.telartis.nl/en/awstats
  *
- * Usage:
- * $awstats = new \telartis\awstatstotals\awstats();
- * $awstats->AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
- * $awstats->main();
+ * Installation instructions:
+ *
+ * - In your AWStats.conf set the following:
+ *   WrapperScript="awstats.php"
+ *
+ * - Create a new script and call this class:
+ *   $awstats = new \telartis\awstatstotals\awstats();
+ *   $awstats->AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
+ *   $awstats->main();
  *
  * Changelog:
  * 1.0 initial version
