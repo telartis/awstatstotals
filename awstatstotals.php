@@ -373,7 +373,8 @@ class awstatstotals
     public function detect_language(string $DirLang): string
     {
         $Lang = '';
-        foreach (explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']) as $Lang) {
+        $languages = (string) filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_STRING);
+        foreach (explode(',', $languages) as $Lang) {
             $Lang = strtolower(trim(substr($Lang, 0, 2)));
             if (is_dir("$DirLang/awstats-$Lang.txt")) {
                 break;
@@ -448,38 +449,27 @@ class awstatstotals
     }
 
     /**
-     * Fetch HTML template
+     * Fetch HTML
      *
+     * @param  integer  $month
+     * @param  integer  $year
+     * @param  array    $rows
+     * @param  array    $totals
+     * @param  array    $message
      * @return string
      */
-    public function fetch_template(): string
+    public function fetch(int $month, int $year, array $rows, array $totals, array $message): string
     {
-        return '<!DOCTYPE HTML PUBLIC -//W3C//DTD HTML 4.01 Transitional//EN>
-<html>
-<head>
-<title>AWStats Totals</title>
-<style type="text/css">
-body { font: 11px verdana,arial,helvetica,sans-serif; background-color: white }
-td   { font: 11px verdana,arial,helvetica,sans-serif; text-align: center; color: black }
-.l { text-align: left }
-.b { background-color: #CCCCDD; padding: 2px; margin: 0 }
-.d { background-color: white }
-.f { font: 14px verdana,arial,helvetica }
-.border { border: #ECECEC 1px solid }
-a  { text-decoration: none }
-a:hover { text-decoration: underline }
-a.h  { color: black }
-</style>
-</head>
-<body>
+        $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL', FILTER_SANITIZE_STRING);
+        $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
+        $config_url = $this->AWStatsURL.'?month='.$month.'&year='.$year.'&config=';
+        $html  = $this->fetch_form($script_url, $month, $year, $message);
+        $html .= '<table align="center">'."\n";
+        $html .= $this->fetch_table_header($sort_url, $message);
+        $html .= $this->fetch_table_body($rows, $totals, $config_url, $message);
+        $html .= '</table>'."\n";
 
-[content]
-
-<br><br><center><b>AWStats Totals 1.21</b> - <a
-href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></center><br><br>
-
-</body>
-</html>';
+        return str_replace('[content]', $html, $this->fetch_template());
     }
 
     /**
@@ -607,27 +597,38 @@ href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></cent
     }
 
     /**
-     * Fetch HTML table header
+     * Fetch HTML template
      *
-     * @param  integer  $month
-     * @param  integer  $year
-     * @param  array    $rows
-     * @param  array    $totals
-     * @param  array    $message
      * @return string
      */
-    public function fetch(int $month, int $year, array $rows, array $totals, array $message): string
+    public function fetch_template(): string
     {
-        $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL', FILTER_SANITIZE_STRING);
-        $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
-        $config_url = $this->AWStatsURL.'?month='.$month.'&year='.$year.'&config=';
-        $html  = $this->fetch_form($script_url, $month, $year, $message);
-        $html .= '<table align="center">'."\n";
-        $html .= $this->fetch_table_header($sort_url, $message);
-        $html .= $this->fetch_table_body($rows, $totals, $config_url, $message);
-        $html .= '</table>'."\n";
+        return '<!DOCTYPE HTML PUBLIC -//W3C//DTD HTML 4.01 Transitional//EN>
+<html>
+<head>
+<title>AWStats Totals</title>
+<style type="text/css">
+body { font: 11px verdana,arial,helvetica,sans-serif; background-color: white }
+td   { font: 11px verdana,arial,helvetica,sans-serif; text-align: center; color: black }
+.l { text-align: left }
+.b { background-color: #CCCCDD; padding: 2px; margin: 0 }
+.d { background-color: white }
+.f { font: 14px verdana,arial,helvetica }
+.border { border: #ECECEC 1px solid }
+a  { text-decoration: none }
+a:hover { text-decoration: underline }
+a.h  { color: black }
+</style>
+</head>
+<body>
 
-        return str_replace('[content]', $html, $this->fetch_template());
+[content]
+
+<br><br><center><b>AWStats Totals 1.21</b> - <a
+href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></center><br><br>
+
+</body>
+</html>';
     }
 
 } // end class
