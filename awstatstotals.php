@@ -131,6 +131,16 @@ class awstatstotals
      */
     public function main(): void
     {
+        echo $this->main_fetch();
+    }
+
+    /**
+     * Get main HTML
+     *
+     * @return string   HTML
+     */
+    public function main_fetch(): string
+    {
         $sort  = isset($_GET['sort'])  ? preg_replace('/[^_a-z]/', '', $_GET['sort']) : $this->sort_default;
         $year  = isset($_GET['year'])  ? (int) $_GET['year']  : (int) date('Y');
         $month = isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n');
@@ -139,7 +149,8 @@ class awstatstotals
         }
 
         if (!is_dir($this->DirData)) {
-            die('Could not open directory '.$this->DirData);
+
+            return 'Could not open directory '.$this->DirData;
         }
 
         $dirfiles = $this->parse_dir($this->DirData);
@@ -257,7 +268,7 @@ class awstatstotals
             $message[161] = 'Not viewed traffic';
         }
 
-        echo $this->fetch($month, $year, $rows, $totals, $message);
+        return $this->fetch($month, $year, $rows, $totals, $message);
     }
 
     /**
