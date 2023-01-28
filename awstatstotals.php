@@ -2,21 +2,23 @@
 
 /**
  * Project:    AWStats Totals
- * Purpose:    A simple php script to view the totals
+ * File:       awstatstotals.php
+ * Purpose:    A simple php class to view the totals
  *             (Unique visitors, Number of visits, Pages, Hits, Bandwidth)
  *             for multiple sites per month with sort options.
- * File:       awstatstotals.php
  * @author     Jeroen de Jong <jeroen@telartis.nl>
  * @copyright  2004-2023 Telartis BV
  * @version    1.21
  * @link       https://www.telartis.nl/en/awstats
  *
- * Usage:
- * $awstatstotals = new \telartis\awstatstotals\awstatstotals();
- * $awstatstotals->DirData    = '/var/lib/awstats';
- * $awstatstotals->DirLang    = '/usr/share/awstats/lang';
- * $awstatstotals->AWStatsURL = '/cgi-bin/awstats.pl';
- * $awstatstotals->main();
+ * Installation instructions:
+ *
+ * - Create a new script and call this class:
+ *   $awstatstotals = new \telartis\awstatstotals\awstatstotals();
+ *   $awstatstotals->DirData    = '/var/lib/awstats';
+ *   $awstatstotals->DirLang    = '/usr/share/awstats/lang';
+ *   $awstatstotals->AWStatsURL = '/cgi-bin/awstats.pl';
+ *   $awstatstotals->main();
  *
  * Changelog:
  * 1.0  initial version
@@ -125,9 +127,9 @@ class awstatstotals
     /**
      * Main program
      *
-     * @return void     Echoed HTML
+     * @return string   Echoed HTML
      */
-    public function main(): void
+    public function main(): string
     {
         $sort  = isset($_GET['sort'])  ? preg_replace('/[^_a-z]/', '', $_GET['sort']) : $this->sort_default;
         $year  = isset($_GET['year'])  ? (int) $_GET['year']  : (int) date('Y');
