@@ -414,14 +414,14 @@ class awstatstotals
     /**
      * Byte Format
      *
-     * @param  int|float  $number
-     * @param  integer    $decimals
+     * @param  mixed    $number    int|float|string
+     * @param  integer  $decimals
      * @return string
      */
     public function byte_format($number, int $decimals = 2): string
     {
-        // kilo, mega, giga, tera, peta, exa, zetta, yotta
-        $prefix_arr = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+        // kilo, mega, giga, tera, peta, exa, zetta, yotta, ronna, quetta
+        $prefix_arr = ['','K','M','G','T','P','E','Z','Y','R','Q'];
         $i = 0;
         if ($number == 0) {
             $result = 0;
@@ -441,7 +441,7 @@ class awstatstotals
     /**
      * Number Format
      *
-     * @param  integer  $number
+     * @param  mixed    $number    int|float|string
      * @param  integer  $decimals
      * @return string
      */
@@ -463,15 +463,19 @@ class awstatstotals
     public function fetch(int $month, int $year, array $rows, array $totals, array $message): string
     {
         $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL', FILTER_SANITIZE_STRING);
+
         $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
         $config_url = $this->AWStatsURL.'?month='.$month.'&year='.$year.'&config=';
-        $html  = $this->fetch_form($script_url, $month, $year, $message);
-        $html .= '<table align="center">'."\n";
-        $html .= $this->fetch_table_header($sort_url, $message);
-        $html .= $this->fetch_table_body($rows, $totals, $config_url, $message);
-        $html .= '</table>'."\n";
 
-        return str_replace('[content]', $html, $this->fetch_template());
+        return str_replace(
+            '[content]',
+            $this->fetch_form($script_url, $month, $year, $message).
+            '<table align="center">'."\n".
+            $this->fetch_table_header($sort_url, $message).
+            $this->fetch_table_body($rows, $totals, $config_url, $message).
+            '</table>'."\n",
+            $this->fetch_template()
+        );
     }
 
     /**
