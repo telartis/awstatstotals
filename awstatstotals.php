@@ -8,52 +8,30 @@
  *             for multiple sites per month with sort options.
  * @author     Jeroen de Jong <jeroen@telartis.nl>
  * @copyright  2004-2023 Telartis BV
- * @version    1.21
  * @link       https://www.telartis.nl/en/awstats
- *
- * Installation instructions:
- *
- * - Create a new script and call this class:
- *   $awstatstotals = new \telartis\awstatstotals\awstatstotals();
- *   $awstatstotals->DirData    = '/var/lib/awstats';
- *   $awstatstotals->DirLang    = '/usr/share/awstats/lang';
- *   $awstatstotals->AWStatsURL = '/cgi-bin/awstats.pl';
- *   $awstatstotals->main();
- *
- * Changelog:
- * 1.0  initial version
- * 1.1  use awstats language files to set your language
- * 1.2  register_globals setting can be off
- * 1.3  display yearly totals and last entry (Marco Gruber)
- * 1.4  use english messages when no language files found
- * 1.5  error_reporting setting can be E_ALL
- * 1.6  fixed incorrect unique visitors in year view (ConteZero)
- * 1.7  changed number and byte format
- * 1.8  added not viewed traffic, changed layout, improved reading of AWStats database
- * 1.9  define all variables (Michael Dorn)
- * 1.10 added browser language detection (based on work by Andreas Diem)
- * 1.11 fixed notice errors when no data file present (Marco Gruber)
- * 1.12 recursive reading of awstats data directory
- * 1.13 fixed trailing slashes problem with directories
- * 1.14 fixed errors when some dirs or files were not found (Reported by Sam Evans)
- * 1.15 added security checks for input parameters (Elliot Kendall)
- * 1.16 fixed month parameter 'all' to show stats in awstats
- * 1.17 fixed small problem with open_basedir (Fred Peeterman)
- * 1.18 added filter to ignore config files (Thomas Luder)
- * 1.19 removed create_function to support PHP 8
- * 1.20 converted to class
- * 1.21 added namespace and type declarations
  *
  */
 
 namespace telartis\awstatstotals;
 
-// Uncomment these two lines if you want to call this script directly:
+// Installation instructions:
+//
+// 1) Create a new script and call this class:
+//   $awstatstotals = new \telartis\awstatstotals\awstatstotals();
+//   $awstatstotals->DirData    = '/var/lib/awstats';
+//   $awstatstotals->DirLang    = '/usr/share/awstats/lang';
+//   $awstatstotals->AWStatsURL = '/cgi-bin/awstats.pl';
+//   $awstatstotals->main();
+//
+// - OR -
+//
+// 2) Uncomment these two lines if you want to call this class/script directly:
 // $obj = new awstatstotals();
 // $obj->main();
 
 class awstatstotals
 {
+    const VERSION = '1.21';
 
     /**
      * Set this value to the directory where AWStats
@@ -647,7 +625,7 @@ a.h  { color: black }
 
 [content]
 
-<br><br><center><b>AWStats Totals 1.21</b> - <a
+<br><br><center><b>AWStats Totals '.self::VERSION.'</b> - <a
 href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></center><br><br>
 
 </body>
