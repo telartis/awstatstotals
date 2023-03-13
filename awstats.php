@@ -5,32 +5,32 @@
  * File:       awstats.php
  * @author     Jeroen de Jong <jeroen@telartis.nl>
  * @copyright  2004-2023 Telartis BV
- * @version    1.4
  * @link       https://www.telartis.nl/en/awstats
- *
- * Installation instructions:
- *
- * - In your AWStats.conf set the following:
- *   WrapperScript="awstats.php"
- *
- * - Create a new script and call this class:
- *   $awstats = new \telartis\awstatstotals\awstats();
- *   $awstats->AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
- *   $awstats->main();
- *
- * Changelog:
- * 1.0 initial version
- * 1.1 changed month param pattern
- * 1.2 added type declarations to function arguments and return values
- * 1.3 converted to class
- * 1.4 added namespace
  *
  */
 
 namespace telartis\awstatstotals;
 
+// Installation instructions:
+//
+// 0) In your AWStats.conf set the following:
+//   WrapperScript="awstats.php"
+//
+// 1) Create a new script and call this class:
+//   $awstats = new \telartis\awstatstotals\awstats();
+//   $awstats->AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
+//   $awstats->main();
+//
+// - OR -
+//
+// 2) Uncomment these two lines if you want to call this class/script directly:
+// $obj = new awstats();
+// $obj->main();
+
 class awstats
 {
+    const VERSION = '1.4';
+
     /**
      * The location of the AWStats script.
      */
