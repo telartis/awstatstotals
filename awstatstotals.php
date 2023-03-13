@@ -48,6 +48,10 @@
 
 namespace telartis\awstatstotals;
 
+// Uncomment these two lines if you want to call this script directly:
+// $obj = new awstatstotals();
+// $obj->main();
+
 class awstatstotals
 {
 
@@ -112,15 +116,17 @@ class awstatstotals
      * Config names to ignore.
      */
     public $FilterIgnoreConfigs = [];
-    /*
-        To read website configs from database, extend class and do something like:
 
-        public function __construct()
-        {
-            $sth = $dbh->prepare('SELECT config FROM websites WHERE user=:id)');
-            $sth->execute();
-            $this->FilterConfigs = $sth->fetchColumn();
-        }
+    /*
+
+    To read website configs from database, extend class and do something like:
+
+    public function __construct()
+    {
+        $sth = $dbh->prepare('SELECT config FROM websites WHERE user=:id)');
+        $sth->execute();
+        $this->FilterConfigs = $sth->fetchColumn();
+    }
 
     */
 
