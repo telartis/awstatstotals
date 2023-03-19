@@ -263,19 +263,19 @@ class awstatstotals
      */
     public function read_history(string $file): array
     {
-        $s = '';
-        $f = fopen($file, 'r');
-        while (!feof($f)) {
-           $line = fgets($f, 4096);
-           $s .= $line;
+        $contents = '';
+        $handle = fopen($file, 'r');
+        while (!feof($handle)) {
+           $line = fgets($handle, 4096);
+           $contents .= $line;
            if (trim($line) == 'END_TIME') {
                break;
            }
         }
-        fclose($f);
+        fclose($handle);
 
-        $visits_total = preg_match('/TotalVisits (\d+)/', $s, $match) ? (int) $match[1] : 0;
-        $unique_total = preg_match('/TotalUnique (\d+)/', $s, $match) ? (int) $match[1] : 0;
+        $visits_total = preg_match('/TotalVisits (\d+)/', $contents, $match) ? (int) $match[1] : 0;
+        $unique_total = preg_match('/TotalUnique (\d+)/', $contents, $match) ? (int) $match[1] : 0;
 
         $pages_total                = 0;
         $hits_total                 = 0;
@@ -284,7 +284,7 @@ class awstatstotals
         $not_viewed_hits_total      = 0;
         $not_viewed_bandwidth_total = 0;
 
-        if (preg_match('/\nBEGIN_TIME \d+\n(.*)\nEND_TIME\n/s', $s, $match)) {
+        if (preg_match('/\nBEGIN_TIME \d+\n(.*)\nEND_TIME\n/s', $contents, $match)) {
             foreach (explode("\n", $match[1]) as $row) {
                 [
                     /* hour */,
