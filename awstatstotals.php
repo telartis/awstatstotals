@@ -153,15 +153,16 @@ class awstatstotals
             }
         }
 
-        $totals = [];
-        $totals['visits_total']               = 0;
-        $totals['unique_total']               = 0;
-        $totals['pages_total']                = 0;
-        $totals['hits_total']                 = 0;
-        $totals['bandwidth_total']            = 0;
-        $totals['not_viewed_pages_total']     = 0;
-        $totals['not_viewed_hits_total']      = 0;
-        $totals['not_viewed_bandwidth_total'] = 0;
+        $totals = [
+            'visits_total'               => 0,
+            'unique_total'               => 0,
+            'pages_total'                => 0,
+            'hits_total'                 => 0,
+            'bandwidth_total'            => 0,
+            'not_viewed_pages_total'     => 0,
+            'not_viewed_hits_total'      => 0,
+            'not_viewed_bandwidth_total' => 0,
+        ];
 
         $rows = [];
         if ($files) {
@@ -170,7 +171,8 @@ class awstatstotals
             for ($i = 0, $cnt = count($files); $i <= $cnt; $i++) {
                 $row = [];
                 if ($i < $cnt) {
-                    $row = $this->read_history($files[$i]);
+                    [$year, $month, $config] = $this->split_filename($files[$i]);
+                    $row = $this->month_data($year, $month, $config);
 
                     if ($this->NotViewed == 'sum') {
                         $row['pages']     += $row['not_viewed_pages'];
@@ -190,7 +192,7 @@ class awstatstotals
                         $totals['not_viewed_bandwidth_total'] += $row['not_viewed_bandwidth'];
                     }
                 }
-                if ( isset($row['config']) && isset($row_prev['config']) && ($row['config'] == $row_prev['config']) ) {
+                if ($row['config'] == $row_prev['config']) {
                     $row['visits']    += $row_prev['visits'];
                     $row['unique']    += $row_prev['unique'];
                     $row['pages']     += $row_prev['pages'];
@@ -215,10 +217,7 @@ class awstatstotals
             array_multisort(array_column($rows, $sort), SORT_DESC, $rows);
         }
 
-        // remove trailing slash if there is one:
-        if (substr($this->DirLang, -1) == '/') {
-            $this->DirLang = substr($this->DirLang, 0, strlen($this->DirLang) - 1);
-        }
+        $this->DirLang = $this->remove_trailing_slash($this->DirLang);
 
         if ($this->Lang == 'auto') {
             $this->Lang = $this->detect_language($this->DirLang);
@@ -256,76 +255,153 @@ class awstatstotals
     }
 
     /**
-     * Get config
+     * Remove trailing slash
      *
      * @param  string   $file
      * @return string
      */
-    public function get_config(string $file): string
+    public function remove_trailing_slash(string $file): string
     {
-        return preg_match('/awstats\d{6}\.(.+)\.txt/', $file, $match) ? $match[1] : '';
+        $file = trim($file);
+        if (substr($file, -1) == '/') {
+            $file = substr($file, 0, -1);
+        }
+
+        return $file;
     }
 
     /**
-     * Read history
+     * Add trailing slash
      *
      * @param  string   $file
+     * @return string
+     */
+    public function add_trailing_slash(string $file): string
+    {
+        $file = trim($file);
+        if (substr($file, -1) != '/') {
+            $file .= '/';
+        }
+
+        return $file;
+    }
+
+    /**
+     * Split filename
+     *
+     * @param  string   $file
+     * @return array(year, month, config)
+     */
+    public function split_filename(string $file): array
+    {
+        [, $month, $year, $config] = preg_match('/awstats(\d{2})(\d{4})\.(.+)\.txt/', $file, $match)
+            ? $match
+            : [null, 0, 0, ''];
+
+        return [(int) $year, (int) $month, $config];
+    }
+
+    /**
+     * Make filename
+     *
+     * @param  integer  $year
+     * @param  integer  $month
+     * @param  string   $config
+     * @return string
+     */
+    public function make_filename(int $year, int $month, string $config): string
+    {
+        return $this->remove_trailing_slash($this->DirData).
+            '/awstats'.substr('0'.$month, -2).$year.'.'.$config.'.txt';
+    }
+
+    /**
+     * Get month data
+     *
+     * @param  integer  $year
+     * @param  integer  $month
+     * @param  string   $config
      * @return array
      */
-    public function read_history(string $file): array
+    public function month_data(int $year, int $month, string $config): array
     {
         $contents = '';
-        $handle = fopen($file, 'r');
-        while (!feof($handle)) {
-           $line = fgets($handle, 4096);
-           $contents .= $line;
-           if (trim($line) == 'END_TIME') {
-               break;
-           }
-        }
-        fclose($handle);
-
-        $visits_total = preg_match('/TotalVisits (\d+)/', $contents, $match) ? (int) $match[1] : 0;
-        $unique_total = preg_match('/TotalUnique (\d+)/', $contents, $match) ? (int) $match[1] : 0;
-
-        $pages_total                = 0;
-        $hits_total                 = 0;
-        $bandwidth_total            = 0;
-        $not_viewed_pages_total     = 0;
-        $not_viewed_hits_total      = 0;
-        $not_viewed_bandwidth_total = 0;
-
-        if (preg_match('/\nBEGIN_TIME \d+\n(.*)\nEND_TIME\n/s', $contents, $match)) {
-            foreach (explode("\n", $match[1]) as $row) {
-                [
-                    /* hour */,
-                    $pages,
-                    $hits,
-                    $bandwidth,
-                    $not_viewed_pages,
-                    $not_viewed_hits,
-                    $not_viewed_bandwidth
-                ] = explode(' ', $row);
-                $pages_total                += $pages;
-                $hits_total                 += $hits;
-                $bandwidth_total            += $bandwidth;
-                $not_viewed_pages_total     += $not_viewed_pages;
-                $not_viewed_hits_total      += $not_viewed_hits;
-                $not_viewed_bandwidth_total += $not_viewed_bandwidth;
+        $file = $this->make_filename($year, $month, $config);
+        if (file_exists($file)) {
+            $handle = fopen($file, 'r');
+            while (!feof($handle)) {
+               $line = fgets($handle, 4096);
+               $contents .= $line;
+               if (trim($line) == 'END_TIME') {
+                   break;
+               }
             }
+            fclose($handle);
         }
 
-        return [
-            'config'               => $this->get_config($file),
-            'visits'               => $visits_total,
-            'unique'               => $unique_total,
-            'pages'                => $pages_total,
-            'hits'                 => $hits_total,
-            'bandwidth'            => $bandwidth_total,
-            'not_viewed_pages'     => $not_viewed_pages_total,
-            'not_viewed_hits'      => $not_viewed_hits_total,
-            'not_viewed_bandwidth' => $not_viewed_bandwidth_total,
+        $rows = [];
+        foreach ($this->block_lines('TIME', $contents) as $line) {
+            $rows[] = array_map('intval', explode(' ', $line));
+        }
+        $result = [
+            'config' => $config,
+            'visits' => preg_match('/TotalVisits (\d+)/', $contents, $match) ? (int) $match[1] : 0,
+            'unique' => preg_match('/TotalUnique (\d+)/', $contents, $match) ? (int) $match[1] : 0,
         ];
+        $keys = [
+            'pages',
+            'hits',
+            'bandwidth',
+            'not_viewed_pages',
+            'not_viewed_hits',
+            'not_viewed_bandwidth',
+        ];
+        foreach ($keys as $i => $key) {
+            $result[$key] = array_sum(array_column($rows, $i + 1));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get day data
+     *
+     * @param  integer  $year
+     * @param  integer  $month
+     * @return array
+     */
+    public function day_data(int $year, int $month, string $config): array
+    {
+        $data = [];
+        $file = $this->make_filename($year, $month, $config);
+        $contents = file_exists($file) ? file_get_contents($file) : '';
+        foreach ($this->block_lines('DAY', $contents) as $line) {
+            [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
+            // convert yyyymmdd to yyyy-mm-dd:
+            $date = substr($date, 0, 4).'-'.substr($date, 4, 2).'-'.substr($date, 6, 2);
+            $data[$date] = [
+                'pages'     => (int) $pages,
+                'hits'      => (int) $hits,
+                'bandwidth' => (int) $bandwidth,
+                'visits'    => (int) $visits,
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get block lines array
+     *
+     * @param  string   $name      Block name
+     * @param  string   $contents  File contents
+     * @return array
+     */
+    public function block_lines(string $name, string $contents): array
+    {
+        return preg_match('/\nBEGIN_'.$name.' \d+\n(.*)\nEND_'.$name.'\n/s', $contents, $match)
+            ? explode("\n", $match[1])
+            : [];
     }
 
     /**
@@ -336,11 +412,8 @@ class awstatstotals
      */
     public function parse_dir(string $dir): array
     {
-        // add a trailing slash if it doesn't exist:
-        if (substr($dir, -1) != '/') {
-            $dir .= '/';
-        }
         $files = [];
+        $dir = $this->add_trailing_slash($dir);
         if ($dh = @opendir($dir)) {
             while (($file = readdir($dh)) !== false) {
                 if (!preg_match('/^\./s', $file)) {
@@ -362,26 +435,26 @@ class awstatstotals
     /**
      * Detect Language
      *
-     * @param  string   $DirLang
+     * @param  string   $dir
      * @return string
      */
-    public function detect_language(string $DirLang): string
+    public function detect_language(string $dir): string
     {
-        $Lang = '';
+        $lang = '';
         $languages = (string) filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_STRING);
-        foreach (explode(',', $languages) as $Lang) {
-            $Lang = strtolower(trim(substr($Lang, 0, 2)));
-            if (is_dir("$DirLang/awstats-$Lang.txt")) {
+        foreach (explode(',', $languages) as $lang) {
+            $lang = strtolower(trim(substr($lang, 0, 2)));
+            if (is_dir("$dir/awstats-$lang.txt")) {
                 break;
             } else {
-                $Lang = '';
+                $lang = '';
             }
         }
-        if (!$Lang) {
-            $Lang = 'en';
+        if (!$lang) {
+            $lang = 'en';
         }
 
-        return $Lang;
+        return $lang;
     }
 
     /**
@@ -555,10 +628,9 @@ class awstatstotals
      * @param  array    $rows
      * @param  array    $totals
      * @param  string   $url
-     * @param  array    $message
      * @return string
      */
-    public function fetch_table_body(array $rows, array $totals, string $url, array $message): string
+    public function fetch_table_body(array $rows, array $totals, string $url): string
     {
         $html = '';
         foreach ($rows as $row) {
