@@ -10,6 +10,29 @@
  * @copyright  2004-2023 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  *
+ * Functions:
+ * main(): void
+ * main_fetch(): string
+ * year_data(string $config, int $year): array
+ * month_data(string $config, int $year, int $month, $default = null): array
+ * day_data(string $config, int $year, int $month, bool $complete_month = true): array
+ * block_lines(string $name, string $contents): array
+ * parse_dir(string $dir): array
+ * detect_language(string $dir): string
+ * read_language_data(string $file): array
+ * add_trailing_slash(string $file): string
+ * remove_trailing_slash(string $file): string
+ * split_filename(string $file): array
+ * make_filename(string $config, int $year, int $month): string
+ * byte_format($number, int $decimals = 2): string
+ * num_format($number, int $decimals = 0): string
+ * lz($number, int $n = 2): string
+ * fetch(int $month, int $year, array $rows, array $totals, array $message): string
+ * fetch_form(string $script_url, int $month, int $year, array $message): string
+ * fetch_table_header(string $url, array $message): string
+ * fetch_table_body(array $rows, array $totals, string $url): string
+ * fetch_template(): string
+ *
  */
 
 namespace telartis\awstatstotals;
@@ -17,7 +40,7 @@ namespace telartis\awstatstotals;
 // Installation instructions:
 //
 // 1) Create a new script and call this class:
-//   $awstatstotals = new \telartis\awstatstotals\awstatstotals();
+//   $awstatstotals = new \telartis\awstatstotals\awstatstotals;
 //   $awstatstotals->DirData    = '/var/lib/awstats';
 //   $awstatstotals->DirLang    = '/usr/share/awstats/lang';
 //   $awstatstotals->AWStatsURL = '/cgi-bin/awstats.pl';
@@ -26,7 +49,7 @@ namespace telartis\awstatstotals;
 // - OR -
 //
 // 2) Uncomment these two lines if you want to call this class/script directly:
-// $obj = new awstatstotals();
+// $obj = new awstatstotals;
 // $obj->main();
 
 class awstatstotals
@@ -171,8 +194,8 @@ class awstatstotals
             for ($i = 0, $cnt = count($files); $i <= $cnt; $i++) {
                 $row = [];
                 if ($i < $cnt) {
-                    [$year, $month, $config] = $this->split_filename($files[$i]);
-                    $row = $this->month_data($year, $month, $config);
+                    [$config, $year, $month] = $this->split_filename($files[$i]);
+                    $row = $this->month_data($config, $year, $month, 0);
 
                     if ($this->NotViewed == 'sum') {
                         $row['pages']     += $row['not_viewed_pages'];
@@ -255,78 +278,36 @@ class awstatstotals
     }
 
     /**
-     * Remove trailing slash
+     * Get year data
      *
-     * @param  string   $file
-     * @return string
-     */
-    public function remove_trailing_slash(string $file): string
-    {
-        $file = trim($file);
-        if (substr($file, -1) == '/') {
-            $file = substr($file, 0, -1);
-        }
-
-        return $file;
-    }
-
-    /**
-     * Add trailing slash
-     *
-     * @param  string   $file
-     * @return string
-     */
-    public function add_trailing_slash(string $file): string
-    {
-        $file = trim($file);
-        if (substr($file, -1) != '/') {
-            $file .= '/';
-        }
-
-        return $file;
-    }
-
-    /**
-     * Split filename
-     *
-     * @param  string   $file
-     * @return array(year, month, config)
-     */
-    public function split_filename(string $file): array
-    {
-        [, $month, $year, $config] = preg_match('/awstats(\d{2})(\d{4})\.(.+)\.txt/', $file, $match)
-            ? $match
-            : [null, 0, 0, ''];
-
-        return [(int) $year, (int) $month, $config];
-    }
-
-    /**
-     * Make filename
-     *
-     * @param  integer  $year
-     * @param  integer  $month
      * @param  string   $config
-     * @return string
+     * @param  integer  $year
+     * @return array
      */
-    public function make_filename(int $year, int $month, string $config): string
+    public function year_data(string $config, int $year): array
     {
-        return $this->remove_trailing_slash($this->DirData).
-            '/awstats'.substr('0'.$month, -2).$year.'.'.$config.'.txt';
+        $data = [];
+        for ($month = 1; $month <= 12; $month++) {
+            $date = $year.'-'.$this->lz($month).'-01';
+            $data[$date] = $this->month_data($config, $year, $month);
+        }
+
+        return $data;
     }
 
     /**
      * Get month data
      *
+     * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
-     * @param  string   $config
+     * @param  mixed    $default  Optional, default NULL
      * @return array
      */
-    public function month_data(int $year, int $month, string $config): array
+    public function month_data(string $config, int $year, int $month, $default = null): array
     {
         $contents = '';
-        $file = $this->make_filename($year, $month, $config);
+        $file = $this->make_filename($config, $year, $month);
         if (file_exists($file)) {
             $handle = fopen($file, 'r');
             while (!feof($handle)) {
@@ -345,8 +326,8 @@ class awstatstotals
         }
         $result = [
             'config' => $config,
-            'visits' => preg_match('/TotalVisits (\d+)/', $contents, $match) ? (int) $match[1] : 0,
-            'unique' => preg_match('/TotalUnique (\d+)/', $contents, $match) ? (int) $match[1] : 0,
+            'visits' => preg_match('/TotalVisits (\d+)/', $contents, $match) ? (int) $match[1] : $default,
+            'unique' => preg_match('/TotalUnique (\d+)/', $contents, $match) ? (int) $match[1] : $default,
         ];
         $keys = [
             'pages',
@@ -366,14 +347,29 @@ class awstatstotals
     /**
      * Get day data
      *
+     * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
+     * @param  boolean  $complete_month  Optional, default TRUE
      * @return array
      */
-    public function day_data(int $year, int $month, string $config): array
+    public function day_data(string $config, int $year, int $month, bool $complete_month = true): array
     {
         $data = [];
-        $file = $this->make_filename($year, $month, $config);
+        if ($complete_month) {
+            // initialize data array with null values for all days in the given month:
+            $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            for ($day = 1; $day <= $days; $day++) {
+                $date = $year.'-'.$this->lz($month).'-'.$this->lz($day);
+                $data[$date] = [
+                    'pages'     => null,
+                    'hits'      => null,
+                    'bandwidth' => null,
+                    'visits'    => null,
+                ];
+            }
+        }
+        $file = $this->make_filename($config, $year, $month);
         $contents = file_exists($file) ? file_get_contents($file) : '';
         foreach ($this->block_lines('DAY', $contents) as $line) {
             [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
@@ -478,6 +474,67 @@ class awstatstotals
     }
 
     /**
+     * Add trailing slash
+     *
+     * @param  string   $file
+     * @return string
+     */
+    public function add_trailing_slash(string $file): string
+    {
+        $file = trim($file);
+        if (substr($file, -1) != '/') {
+            $file .= '/';
+        }
+
+        return $file;
+    }
+
+    /**
+     * Remove trailing slash
+     *
+     * @param  string   $file
+     * @return string
+     */
+    public function remove_trailing_slash(string $file): string
+    {
+        $file = trim($file);
+        if (substr($file, -1) == '/') {
+            $file = substr($file, 0, -1);
+        }
+
+        return $file;
+    }
+
+    /**
+     * Split filename
+     *
+     * @param  string   $file
+     * @return array(config, year, month)
+     */
+    public function split_filename(string $file): array
+    {
+        [, $month, $year, $config] = preg_match('/awstats(\d{2})(\d{4})\.(.+)\.txt/', $file, $match)
+            ? $match
+            : [null, 0, 0, ''];
+
+        return [$config, (int) $year, (int) $month];
+    }
+
+    /**
+     * Make filename
+     *
+     * @param  string   $config
+     * @param  integer  $year
+     * @param  integer  $month
+     * @return string
+     */
+    public function make_filename(string $config, int $year, int $month): string
+    {
+        return $this->remove_trailing_slash($this->DirData).
+            '/awstats'.$this->lz($month).$year.'.'.$config.'.txt';
+    }
+
+    /**
      * Byte Format
      *
      * @param  mixed    $number    int|float|string
@@ -514,6 +571,18 @@ class awstatstotals
     public function num_format($number, int $decimals = 0): string
     {
         return number_format((float) $number, $decimals, $this->dec_point, $this->thousands_sep);
+    }
+
+    /**
+     * Formatting a number with leading zeros
+     *
+     * @param  mixed    $number  int|float|string
+     * @param  integer  $n       Optional, default 2
+     * @return string   If number is 4 the output would be "04", number 122.5 would output "123".
+     */
+    public function lz($number, int $n = 2): string
+    {
+        return sprintf('%0'.$n.'d', round($number));
     }
 
     /**
