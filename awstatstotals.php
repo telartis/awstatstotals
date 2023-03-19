@@ -256,6 +256,17 @@ class awstatstotals
     }
 
     /**
+     * Get config
+     *
+     * @param  string   $file
+     * @return string
+     */
+    public function get_config(string $file): string
+    {
+        return preg_match('/awstats\d{6}\.(.+)\.txt/', $file, $match) ? $match[1] : '';
+    }
+
+    /**
      * Read history
      *
      * @param  string   $file
@@ -305,7 +316,7 @@ class awstatstotals
         }
 
         return [
-            'config'               => $config,
+            'config'               => $this->get_config($file),
             'visits'               => $visits_total,
             'unique'               => $unique_total,
             'pages'                => $pages_total,
