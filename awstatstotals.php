@@ -192,7 +192,7 @@ class awstatstotals
                         $totals['not_viewed_bandwidth_total'] += $row['not_viewed_bandwidth'];
                     }
                 }
-                if ($row['config'] == $row_prev['config']) {
+                if ( isset($row['config']) && isset($row_prev['config']) && ($row['config'] == $row_prev['config']) ) {
                     $row['visits']    += $row_prev['visits'];
                     $row['unique']    += $row_prev['unique'];
                     $row['pages']     += $row_prev['pages'];
