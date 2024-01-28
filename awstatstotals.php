@@ -7,7 +7,7 @@
  *             (Unique visitors, Number of visits, Pages, Hits, Bandwidth)
  *             for multiple sites per month with sort options.
  * @author     Jeroen de Jong <jeroen@telartis.nl>
- * @copyright  2004-2023 Telartis BV
+ * @copyright  2004-2024 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  *
  * Functions:
@@ -820,7 +820,7 @@ a.h  { color: black }
 [content]
 
 <br><br><center><b>AWStats Totals '.self::VERSION.'</b> - <a
-href="https://www.telartis.nl/en/awstats">&copy; 2004-2023 Telartis BV</a></center><br><br>
+href="https://www.telartis.nl/en/awstats">&copy; 2004-2024 Telartis BV</a></center><br><br>
 
 </body>
 </html>';
