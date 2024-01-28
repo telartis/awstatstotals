@@ -14,8 +14,10 @@
  * main(): void
  * main_fetch(): string
  * year_data(string $config, int $year): array
- * month_data(string $config, int $year, int $month, $default = null): array
- * day_data(string $config, int $year, int $month, bool $complete_month = true): array
+ * month_data(string $config, int $year, int $month, bool $complete_month = true): array
+ * month_totals(string $config, int $year, int $month, $default = null): array
+ * pages_url_list(string $config, int $year, int $month): array
+ * errors404_list(string $config, int $year, int $month): array
  * block_lines(string $name, string $contents): array
  * parse_dir(string $dir): array
  * detect_language(string $dir): string
@@ -54,7 +56,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.21';
+    const VERSION = '1.22';
 
     /**
      * Set this value to the directory where AWStats
@@ -195,7 +197,7 @@ class awstatstotals
                 $row = [];
                 if ($i < $cnt) {
                     [$config, $year, $month] = $this->split_filename($files[$i]);
-                    $row = $this->month_data($config, $year, $month, 0);
+                    $row = $this->month_totals($config, $year, $month, 0);
 
                     if ($this->NotViewed == 'sum') {
                         $row['pages']     += $row['not_viewed_pages'];
@@ -278,33 +280,75 @@ class awstatstotals
     }
 
     /**
-     * Get year data
+     * Get year data for each month
      *
      * @param  string   $config
      * @param  integer  $year
-     * @return array
+     * @return array(yyyy-mm-01 => [config, visits, unique, pages, hits, bandwidth, not_viewed_...])
      */
     public function year_data(string $config, int $year): array
     {
         $data = [];
         for ($month = 1; $month <= 12; $month++) {
             $date = $year.'-'.$this->lz($month).'-01';
-            $data[$date] = $this->month_data($config, $year, $month);
+            $data[$date] = $this->month_totals($config, $year, $month);
         }
 
         return $data;
     }
 
     /**
-     * Get month data
+     * Get month data for each day
+     *
+     * @param  string   $config
+     * @param  integer  $year
+     * @param  integer  $month
+     * @param  boolean  $complete_month  Optional, default TRUE
+     * @return array(yyyy-mm-dd => [pages, hits, bandwidth, visits])
+     */
+    public function month_data(string $config, int $year, int $month, bool $complete_month = true): array
+    {
+        $data = [];
+        if ($complete_month) {
+            // initialize data array with null values for all days in the given month:
+            $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            for ($day = 1; $day <= $days; $day++) {
+                $date = $year.'-'.$this->lz($month).'-'.$this->lz($day);
+                $data[$date] = [
+                    'pages'     => null,
+                    'hits'      => null,
+                    'bandwidth' => null,
+                    'visits'    => null,
+                ];
+            }
+        }
+        $file = $this->make_filename($config, $year, $month);
+        $contents = file_exists($file) ? file_get_contents($file) : '';
+        foreach ($this->block_lines('DAY', $contents) as $line) {
+            [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
+            // convert yyyymmdd to yyyy-mm-dd:
+            $date = substr($date, 0, 4).'-'.substr($date, 4, 2).'-'.substr($date, 6, 2);
+            $data[$date] = [
+                'pages'     => (int) $pages,
+                'hits'      => (int) $hits,
+                'bandwidth' => (int) $bandwidth,
+                'visits'    => (int) $visits,
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get month totals
      *
      * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
      * @param  mixed    $default  Optional, default NULL
-     * @return array
+     * @return array(config, visits, unique, pages, hits, bandwidth, not_viewed_pages, not_viewed_hits, not_viewed_bandwidth)
      */
-    public function month_data(string $config, int $year, int $month, $default = null): array
+    public function month_totals(string $config, int $year, int $month, $default = null): array
     {
         $contents = '';
         $file = $this->make_filename($config, $year, $month);
@@ -345,41 +389,26 @@ class awstatstotals
     }
 
     /**
-     * Get day data
+     * Get full list of Pages-URLs
      *
      * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
-     * @param  boolean  $complete_month  Optional, default TRUE
-     * @return array
+     * @return array(url, pages, bandwidth, entry, exit)
      */
-    public function day_data(string $config, int $year, int $month, bool $complete_month = true): array
+    public function pages_url_list(string $config, int $year, int $month): array
     {
         $data = [];
-        if ($complete_month) {
-            // initialize data array with null values for all days in the given month:
-            $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-            for ($day = 1; $day <= $days; $day++) {
-                $date = $year.'-'.$this->lz($month).'-'.$this->lz($day);
-                $data[$date] = [
-                    'pages'     => null,
-                    'hits'      => null,
-                    'bandwidth' => null,
-                    'visits'    => null,
-                ];
-            }
-        }
         $file = $this->make_filename($config, $year, $month);
         $contents = file_exists($file) ? file_get_contents($file) : '';
-        foreach ($this->block_lines('DAY', $contents) as $line) {
-            [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
-            // convert yyyymmdd to yyyy-mm-dd:
-            $date = substr($date, 0, 4).'-'.substr($date, 4, 2).'-'.substr($date, 6, 2);
-            $data[$date] = [
+        foreach ($this->block_lines('SIDER', $contents) as $line) {
+            [$url, $pages, $bandwidth, $entry, $exit] = explode(' ', $line);
+            $data[] = [
+                'url'       => $url,
                 'pages'     => (int) $pages,
-                'hits'      => (int) $hits,
                 'bandwidth' => (int) $bandwidth,
-                'visits'    => (int) $visits,
+                'entry'     => (int) $entry,
+                'exit'      => (int) $exit,
             ];
         }
 
@@ -387,7 +416,33 @@ class awstatstotals
     }
 
     /**
-     * Get block lines array
+     * Get list of URLs with 404 errors
+     *
+     * @param  string   $config
+     * @param  integer  $year
+     * @param  integer  $month
+     * @return array(url, hits, referer)
+     */
+    public function errors404_list(string $config, int $year, int $month): array
+    {
+        $data = [];
+
+        $file = $this->make_filename($config, $year, $month);
+        $contents = file_exists($file) ? file_get_contents($file) : '';
+        foreach ($this->block_lines('SIDER_404', $contents) as $line) {
+            [$url, $hits, $referer] = explode(' ', $line);
+            $data[] = [
+                'url'     => $url, // URL with 404 errors
+                'hits'    => (int) $hits,
+                'referer' => $referer, // Last URL referer
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get lines array from within BEGIN/END-block
      *
      * @param  string   $name      Block name
      * @param  string   $contents  File contents
@@ -605,7 +660,7 @@ class awstatstotals
         return str_replace(
             '[content]',
             $this->fetch_form($script_url, $month, $year, $message).
-            '<table align="center">'."\n".
+            '<table class="content" align="center">'."\n".
             $this->fetch_table_header($sort_url, $message).
             $this->fetch_table_body($rows, $totals, $config_url, $message).
             '</table>'."\n",
@@ -625,7 +680,7 @@ class awstatstotals
     public function fetch_form(string $script_url, int $month, int $year, array $message): string
     {
         $html = '<form action="'.$script_url.'">
-<table class="b" border="0" cellpadding="2" cellspacing="0" width="100%">
+<table class="form b" border="0" cellpadding="2" cellspacing="0" width="100%">
 <tr><td class="l">
 
 <table class="d" border="0" cellpadding="8" cellspacing="0" width="100%">
