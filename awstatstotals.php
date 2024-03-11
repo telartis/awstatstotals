@@ -492,16 +492,19 @@ class awstatstotals
     public function detect_language(string $dir): string
     {
         $lang = '';
-        $languages = (string) filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE', FILTER_SANITIZE_STRING);
+        $languages = (string) filter_input(INPUT_SERVER, 'HTTP_ACCEPT_LANGUAGE',
+            FILTER_DEFAULT,
+            FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK
+        );
         foreach (explode(',', $languages) as $lang) {
-            $lang = strtolower(trim(substr($lang, 0, 2)));
-            if (is_dir("$dir/awstats-$lang.txt")) {
+            $lang = strtolower(substr(trim($lang), 0, 2));
+            if (!empty($lang) && file_exists("$dir/awstats-$lang.txt")) {
                 break;
             } else {
                 $lang = '';
             }
         }
-        if (!$lang) {
+        if (empty($lang)) {
             $lang = 'en';
         }
 
@@ -652,7 +655,10 @@ class awstatstotals
      */
     public function fetch(int $month, int $year, array $rows, array $totals, array $message): string
     {
-        $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL', FILTER_SANITIZE_STRING);
+        $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL',
+            FILTER_DEFAULT,
+            FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK
+        );
 
         $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
         $config_url = $this->AWStatsURL.'?month='.$month.'&year='.$year.'&config=';
