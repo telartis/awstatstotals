@@ -11,17 +11,17 @@
  * @link       https://www.telartis.nl/en/awstats
  *
  * Functions:
- * main(): void
- * main_fetch(): string
+ * main(array $params = []): void
+ * main_fetch(array $params = []): string
  * year_data(string $config, int $year): array
  * month_data(string $config, int $year, int $month, bool $complete_month = true): array
  * month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
  * pages_url_list(string $config, int $year, int $month): array
  * errors404_list(string $config, int $year, int $month): array
  * block_lines(string $name, string $contents): array
- * get_configs_files(int $year, $month): array($configs, $files)
+ * get_configs_files(int $year, $month): array(configs, files)
  * get_filename(string $config, int $year, int $month): string
- * split_filename(string $file): array
+ * split_filename(string $file): array(config, year, month)
  * parse_dir(string $dir): array
  * detect_language(string $dir): string
  * read_language_data(string $file): array
@@ -57,7 +57,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.23';
+    const VERSION = '1.23.1';
 
     /**
      * Set this value to the directory where AWStats
@@ -137,23 +137,28 @@ class awstatstotals
     /**
      * Main program
      *
+     * @param  array    $params  Optional, default $_GET
      * @return void     Echoed HTML
      */
-    public function main(): void
+    public function main(array $params = []): void
     {
-        echo $this->main_fetch();
+        echo $this->main_fetch($params);
     }
 
     /**
      * Get main HTML
      *
+     * @param  array    $params  Optional, default $_GET
      * @return string   HTML
      */
-    public function main_fetch(): string
+    public function main_fetch(array $params = []): string
     {
-        $sort  = isset($_GET['sort'])  ? preg_replace('/[^_a-z]/', '', $_GET['sort']) : $this->sort_default;
-        $year  = isset($_GET['year'])  ? (int) $_GET['year']  : (int) date('Y');
-        $month = isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n');
+        if (!$params) {
+            $params = $_GET;
+        }
+        $sort  = isset($params['sort'])  ? preg_replace('/[^_a-z]/', '', $params['sort']) : $this->sort_default;
+        $year  = isset($params['year'])  ? (int) $params['year']  : (int) date('Y');
+        $month = isset($params['month']) ? (int) $params['month'] : (int) date('n');
         if (!$month) {
             $month = 'all';
         }
@@ -310,7 +315,7 @@ class awstatstotals
             }
         }
         $file = $this->get_filename($config, $year, $month);
-        $contents = file_exists($file) ? file_get_contents($file) : '';
+        $contents = $file ? file_get_contents($file) : '';
         foreach ($this->block_lines('DAY', $contents) as $line) {
             [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
             // convert yyyymmdd to yyyy-mm-dd:
@@ -339,10 +344,10 @@ class awstatstotals
     public function month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
     {
         $contents = '';
-        if (empty($file)) {
+        if (!$file) {
             $file = $this->get_filename($config, $year, $month);
         }
-        if (file_exists($file)) {
+        if ($file) {
             $handle = fopen($file, 'r');
             while (!feof($handle)) {
                $line = fgets($handle, 4096);
@@ -390,7 +395,7 @@ class awstatstotals
     {
         $data = [];
         $file = $this->get_filename($config, $year, $month);
-        $contents = file_exists($file) ? file_get_contents($file) : '';
+        $contents = $file ? file_get_contents($file) : '';
         foreach ($this->block_lines('SIDER', $contents) as $line) {
             [$url, $pages, $bandwidth, $entry, $exit] = explode(' ', $line);
             $data[] = [
@@ -417,7 +422,7 @@ class awstatstotals
     {
         $data = [];
         $file = $this->get_filename($config, $year, $month);
-        $contents = file_exists($file) ? file_get_contents($file) : '';
+        $contents = $file ? file_get_contents($file) : '';
         foreach ($this->block_lines('SIDER_404', $contents) as $line) {
             [$url, $hits, $referer] = explode(' ', $line);
             $data[] = [
@@ -445,7 +450,7 @@ class awstatstotals
     }
 
     /**
-     * Get Configs and Files
+     * Get configs and files arrays
      *
      * @param  integer     $year
      * @param  int|string  $month
@@ -471,7 +476,7 @@ class awstatstotals
     }
 
     /**
-     * Get Config File Name
+     * Get config file name or empty string when file is not found
      *
      * @param  string   $config
      * @param  integer  $year
@@ -480,19 +485,24 @@ class awstatstotals
      */
     public function get_filename(string $config, int $year, int $month): string
     {
-        $pattern = '/awstats'.$this->lz($month).$year.'\.'.preg_quote($config, '/').'\.txt$/';
-        foreach ($this->parse_dir($this->DirData) as $file) {
-            if (preg_match($pattern, $file, $match)) {
-
-                return $file;
+        $name = 'awstats'.$this->lz($month).$year.'.'.$config.'.txt';
+        $filename = $this->remove_trailing_slash($this->DirData).'/'.$name;
+        if (!file_exists($filename)) {
+            $filename = '';
+            $pattern = '/'.preg_quote($name, '/').'$/';
+            foreach ($this->parse_dir($this->DirData) as $file) {
+                if (preg_match($pattern, $file, $match)) {
+                    $filename = $file;
+                    break;
+                }
             }
         }
 
-        return '';
+        return $filename;
     }
 
     /**
-     * Split Config File Name
+     * Split config file name
      *
      * @param  string   $file
      * @return array(config, year, month)
@@ -507,7 +517,7 @@ class awstatstotals
     }
 
     /**
-     * Parse Directory
+     * Recursive directory parsing to include support for nested data directories
      *
      * @param  string   $dir
      * @return array
