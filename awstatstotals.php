@@ -15,20 +15,21 @@
  * main_fetch(): string
  * year_data(string $config, int $year): array
  * month_data(string $config, int $year, int $month, bool $complete_month = true): array
- * month_totals(string $config, int $year, int $month, $default = null): array
+ * month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
  * pages_url_list(string $config, int $year, int $month): array
  * errors404_list(string $config, int $year, int $month): array
  * block_lines(string $name, string $contents): array
+ * get_configs_files(int $year, $month): array($configs, $files)
+ * get_filename(string $config, int $year, int $month): string
+ * split_filename(string $file): array
  * parse_dir(string $dir): array
  * detect_language(string $dir): string
  * read_language_data(string $file): array
  * add_trailing_slash(string $file): string
  * remove_trailing_slash(string $file): string
- * split_filename(string $file): array
- * make_filename(string $config, int $year, int $month): string
  * byte_format($number, int $decimals = 2): string
  * num_format($number, int $decimals = 0): string
- * lz($number, int $n = 2): string
+ * lz(int $number): string
  * fetch(int $month, int $year, array $rows, array $totals, array $message): string
  * fetch_form(string $script_url, int $month, int $year, array $message): string
  * fetch_table_header(string $url, array $message): string
@@ -56,7 +57,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.22';
+    const VERSION = '1.23';
 
     /**
      * Set this value to the directory where AWStats
@@ -162,21 +163,7 @@ class awstatstotals
             return 'Could not open directory '.$this->DirData;
         }
 
-        $dirfiles = $this->parse_dir($this->DirData);
-
-        $files = [];
-        $config = [];
-        $pattern = '/awstats'.($month == 'all' ? '\d{2}' : substr('0'.$month, -2)).$year.'\.(.+)\.txt$/';
-        foreach ($dirfiles as $file) {
-            if (preg_match($pattern, $file, $match)) {
-                $config = $match[1];
-                if ((!$this->FilterConfigs || in_array($config, $this->FilterConfigs))
-                    && !in_array($config, $this->FilterIgnoreConfigs)) {
-                    $configs[] = $config;
-                    $files[] = $file;
-                }
-            }
-        }
+        [$configs, $files] = $this->get_configs_files($year, $month);
 
         $totals = [
             'visits_total'               => 0,
@@ -196,8 +183,8 @@ class awstatstotals
             for ($i = 0, $cnt = count($files); $i <= $cnt; $i++) {
                 $row = [];
                 if ($i < $cnt) {
-                    [$config, $year, $month] = $this->split_filename($files[$i]);
-                    $row = $this->month_totals($config, $year, $month, 0);
+                    [$config, $y, $m] = $this->split_filename($files[$i]);
+                    $row = $this->month_totals($config, $y, $m, 0, $files[$i]);
 
                     if ($this->NotViewed == 'sum') {
                         $row['pages']     += $row['not_viewed_pages'];
@@ -322,7 +309,7 @@ class awstatstotals
                 ];
             }
         }
-        $file = $this->make_filename($config, $year, $month);
+        $file = $this->get_filename($config, $year, $month);
         $contents = file_exists($file) ? file_get_contents($file) : '';
         foreach ($this->block_lines('DAY', $contents) as $line) {
             [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
@@ -346,12 +333,15 @@ class awstatstotals
      * @param  integer  $year
      * @param  integer  $month
      * @param  mixed    $default  Optional, default NULL
+     * @param  string   $file     Optional, default ''
      * @return array(config, visits, unique, pages, hits, bandwidth, not_viewed_pages, not_viewed_hits, not_viewed_bandwidth)
      */
-    public function month_totals(string $config, int $year, int $month, $default = null): array
+    public function month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
     {
         $contents = '';
-        $file = $this->make_filename($config, $year, $month);
+        if (empty($file)) {
+            $file = $this->get_filename($config, $year, $month);
+        }
         if (file_exists($file)) {
             $handle = fopen($file, 'r');
             while (!feof($handle)) {
@@ -399,7 +389,7 @@ class awstatstotals
     public function pages_url_list(string $config, int $year, int $month): array
     {
         $data = [];
-        $file = $this->make_filename($config, $year, $month);
+        $file = $this->get_filename($config, $year, $month);
         $contents = file_exists($file) ? file_get_contents($file) : '';
         foreach ($this->block_lines('SIDER', $contents) as $line) {
             [$url, $pages, $bandwidth, $entry, $exit] = explode(' ', $line);
@@ -426,8 +416,7 @@ class awstatstotals
     public function errors404_list(string $config, int $year, int $month): array
     {
         $data = [];
-
-        $file = $this->make_filename($config, $year, $month);
+        $file = $this->get_filename($config, $year, $month);
         $contents = file_exists($file) ? file_get_contents($file) : '';
         foreach ($this->block_lines('SIDER_404', $contents) as $line) {
             [$url, $hits, $referer] = explode(' ', $line);
@@ -456,7 +445,69 @@ class awstatstotals
     }
 
     /**
-     * Parse directory
+     * Get Configs and Files
+     *
+     * @param  integer     $year
+     * @param  int|string  $month
+     * @return array($configs, $files)
+     */
+    public function get_configs_files(int $year, $month): array
+    {
+        $files = [];
+        $config = [];
+        $pattern = '/awstats'.($month == 'all' ? '\d{2}' : $this->lz($month)).$year.'\.(.+)\.txt$/';
+        foreach ($this->parse_dir($this->DirData) as $file) {
+            if (preg_match($pattern, $file, $match)) {
+                $config = $match[1];
+                if ((!$this->FilterConfigs || in_array($config, $this->FilterConfigs))
+                    && !in_array($config, $this->FilterIgnoreConfigs)) {
+                    $configs[] = $config;
+                    $files[] = $file;
+                }
+            }
+        }
+
+        return [$configs, $files];
+    }
+
+    /**
+     * Get Config File Name
+     *
+     * @param  string   $config
+     * @param  integer  $year
+     * @param  integer  $month
+     * @return string
+     */
+    public function get_filename(string $config, int $year, int $month): string
+    {
+        $pattern = '/awstats'.$this->lz($month).$year.'\.'.preg_quote($config, '/').'\.txt$/';
+        foreach ($this->parse_dir($this->DirData) as $file) {
+            if (preg_match($pattern, $file, $match)) {
+
+                return $file;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Split Config File Name
+     *
+     * @param  string   $file
+     * @return array(config, year, month)
+     */
+    public function split_filename(string $file): array
+    {
+        [, $month, $year, $config] = preg_match('/awstats(\d{2})(\d{4})\.(.+)\.txt$/', $file, $match)
+            ? $match
+            : [null, 0, 0, ''];
+
+        return [$config, (int) $year, (int) $month];
+    }
+
+    /**
+     * Parse Directory
      *
      * @param  string   $dir
      * @return array
@@ -564,35 +615,6 @@ class awstatstotals
     }
 
     /**
-     * Split filename
-     *
-     * @param  string   $file
-     * @return array(config, year, month)
-     */
-    public function split_filename(string $file): array
-    {
-        [, $month, $year, $config] = preg_match('/awstats(\d{2})(\d{4})\.(.+)\.txt/', $file, $match)
-            ? $match
-            : [null, 0, 0, ''];
-
-        return [$config, (int) $year, (int) $month];
-    }
-
-    /**
-     * Make filename
-     *
-     * @param  string   $config
-     * @param  integer  $year
-     * @param  integer  $month
-     * @return string
-     */
-    public function make_filename(string $config, int $year, int $month): string
-    {
-        return $this->remove_trailing_slash($this->DirData).
-            '/awstats'.$this->lz($month).$year.'.'.$config.'.txt';
-    }
-
-    /**
      * Byte Format
      *
      * @param  mixed    $number    int|float|string
@@ -612,7 +634,7 @@ class awstatstotals
                 $value /= 1024;
                 $i++;
             }
-            $result = number_format((float) $value, $decimals, $this->dec_point, $this->thousands_sep);
+            $result = $this->num_format($value, $decimals);
         }
         $result .= ' '.$prefix_arr[$i].'B'.($i == 0 ? 'ytes' : '');
 
@@ -634,13 +656,12 @@ class awstatstotals
     /**
      * Formatting a number with leading zeros
      *
-     * @param  mixed    $number  int|float|string
-     * @param  integer  $n       Optional, default 2
-     * @return string   If number is 4 the output would be "04", number 122.5 would output "123".
+     * @param  integer  $number
+     * @return string
      */
-    public function lz($number, int $n = 2): string
+    public function lz(int $number): string
     {
-        return sprintf('%0'.$n.'d', round($number));
+        return substr('0'.$number, -2);
     }
 
     /**
