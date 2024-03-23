@@ -17,14 +17,14 @@ namespace telartis\awstatstotals;
 //   WrapperScript="awstats.php"
 //
 // 1) Create a new script and call this class:
-//   $awstats = new \telartis\awstatstotals\awstats();
+//   $awstats = new \telartis\awstatstotals\awstats;
 //   $awstats->AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
 //   $awstats->main();
 //
 // - OR -
 //
 // 2) Uncomment these two lines if you want to call this class/script directly:
-// $obj = new awstats();
+// $obj = new awstats;
 // $obj->main();
 
 class awstats
