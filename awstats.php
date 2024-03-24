@@ -4,7 +4,7 @@
  * Project:    AWStats PHP Wrapper Class
  * File:       awstats.php
  * @author     Jeroen de Jong <jeroen@telartis.nl>
- * @copyright  2004-2023 Telartis BV
+ * @copyright  2004-2024 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  *
  */
