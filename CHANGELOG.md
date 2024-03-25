@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.23.2] - 2024-03-25
+Added changelog
+
 ## [1.23.1] - 2024-03-23
 Moved file_exists calls to get_filename method
 
