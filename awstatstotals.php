@@ -57,7 +57,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.23.1';
+    const VERSION = '1.23.2';
 
     /**
      * Set this value to the directory where AWStats
@@ -241,32 +241,6 @@ class awstatstotals
         }
 
         $message = $this->read_language_data($this->DirLang.'/awstats-'.$this->Lang.'.txt');
-
-        if (!$message) {
-            $message[  7] = 'Statistics for';
-            $message[ 10] = 'Number of visits';
-            $message[ 11] = 'Unique visitors';
-            $message[ 56] = 'Pages';
-            $message[ 57] = 'Hits';
-            $message[ 60] = 'Jan';
-            $message[ 61] = 'Feb';
-            $message[ 62] = 'Mar';
-            $message[ 63] = 'Apr';
-            $message[ 64] = 'May';
-            $message[ 65] = 'Jun';
-            $message[ 66] = 'Jul';
-            $message[ 67] = 'Aug';
-            $message[ 68] = 'Sep';
-            $message[ 69] = 'Oct';
-            $message[ 70] = 'Nov';
-            $message[ 71] = 'Dec';
-            $message[ 75] = 'Bandwidth';
-            $message[102] = 'Total';
-            $message[115] = 'OK';
-            $message[133] = 'Reported period';
-            $message[160] = 'Viewed traffic';
-            $message[161] = 'Not viewed traffic';
-        }
 
         return $this->fetch($month, $year, $rows, $totals, $message);
     }
@@ -587,6 +561,33 @@ class awstatstotals
                     $result[$match[1]] = $match[2];
                 }
             }
+        }
+        if (!$result) {
+            $result = [
+                  7 => 'Statistics for',
+                 10 => 'Number of visits',
+                 11 => 'Unique visitors',
+                 56 => 'Pages',
+                 57 => 'Hits',
+                 60 => 'Jan',
+                 61 => 'Feb',
+                 62 => 'Mar',
+                 63 => 'Apr',
+                 64 => 'May',
+                 65 => 'Jun',
+                 66 => 'Jul',
+                 67 => 'Aug',
+                 68 => 'Sep',
+                 69 => 'Oct',
+                 70 => 'Nov',
+                 71 => 'Dec',
+                 75 => 'Bandwidth',
+                102 => 'Total',
+                115 => 'OK',
+                133 => 'Reported period',
+                160 => 'Viewed traffic',
+                161 => 'Not viewed traffic',
+            ];
         }
 
         return $result;
