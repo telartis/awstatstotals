@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.24.0] - 2024-07-27
+Bugfix: reading block lines did not always work with large data files
+
 ## [1.23.2] - 2024-03-25
 Added changelog
 
