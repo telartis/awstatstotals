@@ -19,7 +19,7 @@
  * pages_url_list(string $config, int $year, int $month): array
  * errors404_list(string $config, int $year, int $month): array
  * block_lines(string $name, string $contents): array
- * get_configs_files(int $year, $month): array(configs, files)
+ * get_configs_files(int $year, int|string $month): array(configs, files)
  * get_filename(string $config, int $year, int $month): string
  * split_filename(string $file): array(config, year, month)
  * parse_dir(string $dir): array
@@ -30,10 +30,10 @@
  * byte_format($number, int $decimals = 2): string
  * num_format($number, int $decimals = 0): string
  * lz(int $number): string
- * fetch(int $month, int $year, array $rows, array $totals, array $message): string
- * fetch_form(string $script_url, int $month, int $year, array $message): string
+ * fetch(int|string $month, int $year, array $rows, array $totals, array $message): string
+ * fetch_form(string $script_url, int|string $month, int $year, array $message): string
  * fetch_table_header(string $url, array $message): string
- * fetch_table_body(array $rows, array $totals, string $url): string
+ * fetch_table_body(array $rows, array $totals, string $url, array $message): string
  * fetch_template(): string
  *
  */
@@ -57,7 +57,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.23.2';
+    const VERSION = '1.24.0';
 
     /**
      * Set this value to the directory where AWStats
@@ -275,7 +275,7 @@ class awstatstotals
     public function month_data(string $config, int $year, int $month, bool $complete_month = true): array
     {
         $data = [];
-        if ($complete_month) {
+        if (checkdate($month, 1, $year) && $complete_month) {
             // initialize data array with null values for all days in the given month:
             $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
             for ($day = 1; $day <= $days; $day++) {
@@ -291,9 +291,11 @@ class awstatstotals
         $file = $this->get_filename($config, $year, $month);
         $contents = $file ? file_get_contents($file) : '';
         foreach ($this->block_lines('DAY', $contents) as $line) {
-            [$date, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
+            [$dt, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
+
             // convert yyyymmdd to yyyy-mm-dd:
-            $date = substr($date, 0, 4).'-'.substr($date, 4, 2).'-'.substr($date, 6, 2);
+            $date = substr($dt, 0, 4).'-'.substr($dt, 4, 2).'-'.substr($dt, 6, 2);
+
             $data[$date] = [
                 'pages'     => (int) $pages,
                 'hits'      => (int) $hits,
@@ -418,6 +420,13 @@ class awstatstotals
      */
     public function block_lines(string $name, string $contents): array
     {
+        // The preg_match function has a limit on the size of the subject string it can process.
+        // To ensure this function works on very large files, we first need to extract the relevant part of the string:
+        $start = strpos($contents, 'BEGIN_'.$name);
+        $end   = strpos($contents, 'END_'.$name);
+        $len = $start && $end && $end > $start ? $end - $start : 0;
+        $contents = $len ? substr($contents, $start - 1, $len + strlen('END_'.$name) + 2) : '';
+
         return preg_match('/\nBEGIN_'.$name.' \d+\n(.*)\nEND_'.$name.'\n/s', $contents, $match)
             ? explode("\n", $match[1])
             : [];
@@ -433,8 +442,8 @@ class awstatstotals
     public function get_configs_files(int $year, $month): array
     {
         $files = [];
-        $config = [];
-        $pattern = '/awstats'.($month == 'all' ? '\d{2}' : $this->lz($month)).$year.'\.(.+)\.txt$/';
+        $configs = [];
+        $pattern = '/awstats'.($month == 'all' ? '\d{2}' : $this->lz((int) $month)).$year.'\.(.+)\.txt$/';
         foreach ($this->parse_dir($this->DirData) as $file) {
             if (preg_match($pattern, $file, $match)) {
                 $config = $match[1];
@@ -499,20 +508,22 @@ class awstatstotals
     public function parse_dir(string $dir): array
     {
         $files = [];
-        $dir = $this->add_trailing_slash($dir);
-        if ($dh = @opendir($dir)) {
-            while (($file = readdir($dh)) !== false) {
-                if (!preg_match('/^\./s', $file)) {
-                    if (is_dir($dir.$file)) {
-                        $newdir = $dir.$file.'/';
-                        chdir($newdir);
-                        $files = array_merge($files, $this->parse_dir($newdir));
-                    } else {
-                        $files[] = $dir.$file;
+        if (!empty($dir)) {
+            $dir = $this->add_trailing_slash($dir);
+            if ($dh = @opendir($dir)) {
+                while (($file = readdir($dh)) !== false) {
+                    if (!preg_match('/^\./s', $file)) {
+                        if (is_dir($dir.$file)) {
+                            $newdir = $dir.$file.'/';
+                            chdir($newdir);
+                            $files = array_merge($files, $this->parse_dir($newdir));
+                        } else {
+                            $files[] = $dir.$file;
+                        }
                     }
                 }
+                chdir($dir);
             }
-            chdir($dir);
         }
 
         return $files;
@@ -554,43 +565,41 @@ class awstatstotals
      */
     public function read_language_data(string $file): array
     {
-        $result = [];
-        if (file_exists($file)) {
+        $message = [];
+        if (!empty($file) && file_exists($file)) {
             foreach (file($file) as $line) {
                 if (preg_match('/^message(\d+)=(.*)$/', $line, $match)) {
-                    $result[$match[1]] = $match[2];
+                    $message[$match[1]] = $match[2];
                 }
             }
         }
-        if (!$result) {
-            $result = [
-                  7 => 'Statistics for',
-                 10 => 'Number of visits',
-                 11 => 'Unique visitors',
-                 56 => 'Pages',
-                 57 => 'Hits',
-                 60 => 'Jan',
-                 61 => 'Feb',
-                 62 => 'Mar',
-                 63 => 'Apr',
-                 64 => 'May',
-                 65 => 'Jun',
-                 66 => 'Jul',
-                 67 => 'Aug',
-                 68 => 'Sep',
-                 69 => 'Oct',
-                 70 => 'Nov',
-                 71 => 'Dec',
-                 75 => 'Bandwidth',
-                102 => 'Total',
-                115 => 'OK',
-                133 => 'Reported period',
-                160 => 'Viewed traffic',
-                161 => 'Not viewed traffic',
-            ];
+        if (!$message) {
+            $message[7]   = 'Statistics for';
+            $message[10]  = 'Number of visits';
+            $message[11]  = 'Unique visitors';
+            $message[56]  = 'Pages';
+            $message[57]  = 'Hits';
+            $message[60]  = 'Jan';
+            $message[61]  = 'Feb';
+            $message[62]  = 'Mar';
+            $message[63]  = 'Apr';
+            $message[64]  = 'May';
+            $message[65]  = 'Jun';
+            $message[66]  = 'Jul';
+            $message[67]  = 'Aug';
+            $message[68]  = 'Sep';
+            $message[69]  = 'Oct';
+            $message[70]  = 'Nov';
+            $message[71]  = 'Dec';
+            $message[75]  = 'Bandwidth';
+            $message[102] = 'Total';
+            $message[115] = 'OK';
+            $message[133] = 'Reported period';
+            $message[160] = 'Viewed traffic';
+            $message[161] = 'Not viewed traffic';
         }
 
-        return $result;
+        return $message;
     }
 
     /**
@@ -628,7 +637,7 @@ class awstatstotals
     /**
      * Byte Format
      *
-     * @param  mixed    $number    int|float|string
+     * @param  int|float|string  $number
      * @param  integer  $decimals
      * @return string
      */
@@ -640,7 +649,7 @@ class awstatstotals
         if ($number == 0) {
             $result = 0;
         } else {
-            $value = round($number, $decimals);
+            $value = round((float) $number, $decimals);
             while ($value > 1024) {
                 $value /= 1024;
                 $i++;
@@ -655,7 +664,7 @@ class awstatstotals
     /**
      * Number Format
      *
-     * @param  mixed    $number    int|float|string
+     * @param  int|float|string  $number
      * @param  integer  $decimals
      * @return string
      */
@@ -678,16 +687,16 @@ class awstatstotals
     /**
      * Fetch HTML
      *
-     * @param  integer  $month
+     * @param  int|string  $month
      * @param  integer  $year
      * @param  array    $rows
      * @param  array    $totals
      * @param  array    $message
      * @return string
      */
-    public function fetch(int $month, int $year, array $rows, array $totals, array $message): string
+    public function fetch($month, int $year, array $rows, array $totals, array $message): string
     {
-        $script_url = filter_input(INPUT_SERVER, 'SCRIPT_URL',
+        $script_url = (string) filter_input(INPUT_SERVER, 'SCRIPT_URL',
             FILTER_DEFAULT,
             FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK
         );
@@ -710,12 +719,12 @@ class awstatstotals
      * Fetch HTML form
      *
      * @param  string   $script_url
-     * @param  integer  $month
+     * @param  int|string  $month
      * @param  integer  $year
      * @param  array    $message
      * @return string
      */
-    public function fetch_form(string $script_url, int $month, int $year, array $message): string
+    public function fetch_form(string $script_url, $month, int $year, array $message): string
     {
         $html = '<form action="'.$script_url.'">
 <table class="form b" border="0" cellpadding="2" cellspacing="0" width="100%">
@@ -790,9 +799,10 @@ class awstatstotals
      * @param  array    $rows
      * @param  array    $totals
      * @param  string   $url
+     * @param  array    $message
      * @return string
      */
-    public function fetch_table_body(array $rows, array $totals, string $url): string
+    public function fetch_table_body(array $rows, array $totals, string $url, array $message): string
     {
         $html = '';
         foreach ($rows as $row) {
@@ -812,7 +822,7 @@ class awstatstotals
             $html .= "\n";
         }
         $html .= '<tr>'.
-            '<td bgcolor="#ECECEC" class="l">&nbsp;Total'.
+            '<td bgcolor="#ECECEC" class="l">&nbsp;'.$message[102].
             '<td bgcolor="#ECECEC">'.$this->num_format($totals['unique_total']).
             '<td bgcolor="#ECECEC">'.$this->num_format($totals['visits_total']).
             '<td bgcolor="#ECECEC">'.$this->num_format($totals['pages_total']).
@@ -841,16 +851,16 @@ class awstatstotals
 <head>
 <title>AWStats Totals</title>
 <style type="text/css">
-body { font: 11px verdana,arial,helvetica,sans-serif; background-color: white }
-td   { font: 11px verdana,arial,helvetica,sans-serif; text-align: center; color: black }
-.l { text-align: left }
-.b { background-color: #CCCCDD; padding: 2px; margin: 0 }
-.d { background-color: white }
-.f { font: 14px verdana,arial,helvetica }
+body    { font: 11px verdana,arial,helvetica,sans-serif; background-color: white }
+td      { font: 11px verdana,arial,helvetica,sans-serif; text-align: center; color: black }
+.l      { text-align: left }
+.b      { background-color: #CCCCDD; padding: 2px; margin: 0 }
+.d      { background-color: white }
+.f      { font: 14px verdana,arial,helvetica }
 .border { border: #ECECEC 1px solid }
-a  { text-decoration: none }
+a       { text-decoration: none }
 a:hover { text-decoration: underline }
-a.h  { color: black }
+a.h     { color: black }
 </style>
 </head>
 <body>
