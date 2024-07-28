@@ -57,7 +57,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.24.1';
+    const VERSION = '1.24.2';
 
     /**
      * Set this value to the directory where AWStats
