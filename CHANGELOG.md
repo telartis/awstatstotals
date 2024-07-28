@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.24.1] - 2024-07-29
+Improved the efficiency of reading configuration file blocks
+
 ## [1.24.0] - 2024-07-27
 Bugfix: reading block lines did not always work with large data files
 
