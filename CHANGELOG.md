@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.24.2] - 2024-07-29
+Update version in all files
+
 ## [1.24.1] - 2024-07-29
 Improved the efficiency of reading configuration file blocks
 
