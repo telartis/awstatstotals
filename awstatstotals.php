@@ -18,7 +18,7 @@
  * month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
  * pages_url_list(string $config, int $year, int $month): array
  * errors404_list(string $config, int $year, int $month): array
- * block_lines(string $name, string $contents): array
+ * block_lines(string $name, string $file): array
  * get_configs_files(int $year, int|string $month): array(configs, files)
  * get_filename(string $config, int $year, int $month): string
  * split_filename(string $file): array(config, year, month)
@@ -289,13 +289,9 @@ class awstatstotals
             }
         }
         $file = $this->get_filename($config, $year, $month);
-        $contents = $file ? file_get_contents($file) : '';
-        foreach ($this->block_lines('DAY', $contents) as $line) {
+        foreach ($this->block_lines('DAY', $file) as $line) {
             [$dt, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
-
-            // convert yyyymmdd to yyyy-mm-dd:
-            $date = substr($dt, 0, 4).'-'.substr($dt, 4, 2).'-'.substr($dt, 6, 2);
-
+            $date = substr($dt, 0, 4).'-'.substr($dt, 4, 2).'-'.substr($dt, 6, 2); // convert yyyymmdd to yyyy-mm-dd
             $data[$date] = [
                 'pages'     => (int) $pages,
                 'hits'      => (int) $hits,
@@ -319,30 +315,24 @@ class awstatstotals
      */
     public function month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
     {
-        $contents = '';
-        if (!$file) {
+        if (empty($file)) {
             $file = $this->get_filename($config, $year, $month);
         }
-        if ($file) {
-            $handle = fopen($file, 'r');
-            while (!feof($handle)) {
-               $line = fgets($handle, 4096);
-               $contents .= $line;
-               if (trim($line) == 'END_TIME') {
-                   break;
-               }
-            }
-            fclose($handle);
+        $visits = $default;
+        $unique = $default;
+        foreach ($this->block_lines('GENERAL', $file) as $line) {
+            [$key, $val] = explode(' ', $line, 2);
+            if ($key == 'TotalVisits') $visits = (int) $val;
+            if ($key == 'TotalUnique') $unique = (int) $val;
         }
-
         $rows = [];
-        foreach ($this->block_lines('TIME', $contents) as $line) {
+        foreach ($this->block_lines('TIME', $file) as $line) {
             $rows[] = array_map('intval', explode(' ', $line));
         }
         $result = [
             'config' => $config,
-            'visits' => preg_match('/TotalVisits (\d+)/', $contents, $match) ? (int) $match[1] : $default,
-            'unique' => preg_match('/TotalUnique (\d+)/', $contents, $match) ? (int) $match[1] : $default,
+            'visits' => $visits,
+            'unique' => $unique,
         ];
         $keys = [
             'pages',
@@ -371,8 +361,7 @@ class awstatstotals
     {
         $data = [];
         $file = $this->get_filename($config, $year, $month);
-        $contents = $file ? file_get_contents($file) : '';
-        foreach ($this->block_lines('SIDER', $contents) as $line) {
+        foreach ($this->block_lines('SIDER', $file) as $line) {
             [$url, $pages, $bandwidth, $entry, $exit] = explode(' ', $line);
             $data[] = [
                 'url'       => $url,
@@ -398,8 +387,7 @@ class awstatstotals
     {
         $data = [];
         $file = $this->get_filename($config, $year, $month);
-        $contents = $file ? file_get_contents($file) : '';
-        foreach ($this->block_lines('SIDER_404', $contents) as $line) {
+        foreach ($this->block_lines('SIDER_404', $file) as $line) {
             [$url, $hits, $referer] = explode(' ', $line);
             $data[] = [
                 'url'     => $url, // URL with 404 errors
@@ -414,22 +402,30 @@ class awstatstotals
     /**
      * Get lines array from within BEGIN/END-block
      *
-     * @param  string   $name      Block name
-     * @param  string   $contents  File contents
+     * @param  string   $name  Block name
+     * @param  string   $file  Config file name
      * @return array
      */
-    public function block_lines(string $name, string $contents): array
+    public function block_lines(string $name, string $file): array
     {
-        // The preg_match function has a limit on the size of the subject string it can process.
-        // To ensure this function works on very large files, we first need to extract the relevant part of the string:
-        $start = strpos($contents, 'BEGIN_'.$name);
-        $end   = strpos($contents, 'END_'.$name);
-        $len = $start && $end && $end > $start ? $end - $start : 0;
-        $contents = $len ? substr($contents, $start - 1, $len + strlen('END_'.$name) + 2) : '';
+        $result = [];
+        if (!empty($file)) {
+            $handle = fopen($file, 'r');
+            $is_block = false;
+            while (!feof($handle)) {
+               $line = trim((string) fgets($handle, 4096));
+               if (preg_match('/^BEGIN_'.$name.' \d+$/', $line)) {
+                    $is_block = true;
+               } elseif ($line == 'END_'.$name) {
+                   break;
+               } elseif ($is_block) {
+                    $result[] = $line;
+               }
+            }
+            fclose($handle);
+        }
 
-        return preg_match('/\nBEGIN_'.$name.' \d+\n(.*)\nEND_'.$name.'\n/s', $contents, $match)
-            ? explode("\n", $match[1])
-            : [];
+        return $result;
     }
 
     /**
