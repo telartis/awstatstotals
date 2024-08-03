@@ -3,9 +3,10 @@
 /**
  * Project:    AWStats Totals
  * File:       awstatstotals.php
- * Purpose:    A simple php class to view the totals
- *             (Unique visitors, Number of visits, Pages, Hits, Bandwidth)
- *             for multiple sites per month with sort options.
+ * Purpose:    AWStats Totals is a straightforward PHP script designed to display the AWStats totals
+ *             (Unique visitors, Number of visits, Pages, Hits, and Bandwidth) for multiple websites.
+ *             The interface features a month selection input form, allowing you to filter data by month,
+ *             and offers the ability to sort each column.
  * @author     Jeroen de Jong <jeroen@telartis.nl>
  * @copyright  2004-2024 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
@@ -51,17 +52,16 @@ namespace telartis\awstatstotals;
 //
 // - OR -
 //
-// 2) Uncomment these two lines if you want to call this class/script directly:
+// 2) Uncomment these two lines if you wish to call this class/script directly:
 // $obj = new awstatstotals;
 // $obj->main();
 
 class awstatstotals
 {
-    const VERSION = '1.24.2';
+    const VERSION = '1.24.3';
 
     /**
-     * Set this value to the directory where AWStats
-     * saves its database and working files into.
+     * Set this value to the directory where AWStats saves its database and working files.
      */
     public $DirData = '/var/lib/awstats';
 
@@ -71,8 +71,7 @@ class awstatstotals
     public $AWStatsURL = '/cgi-bin/awstats.pl';
 
     /**
-     * Set your language.
-     * Possible value:
+     * Select your language. Possible values include:
      *  Albanian=al, Bosnian=ba, Bulgarian=bg, Catalan=ca,
      *  Chinese (Taiwan)=tw, Chinese (Simpliefied)=cn, Czech=cz, Danish=dk,
      *  Dutch=nl, English=en, Estonian=et, Euskara=eu, Finnish=fi,
@@ -87,26 +86,25 @@ class awstatstotals
     public $Lang = 'auto';
 
     /**
-     * Set the location of language files.
+     * Set the directory path for language files.
      */
     public $DirLang = '/usr/share/awstats/lang';
 
     /**
-     * How to display not viewed traffic
-     * Possible value: ignore, columns, sum
+     * Specify how to display unviewed traffic. Possible values include:
+     *  ignore, columns, sum
      */
     public $NotViewed = 'sum';
 
     /**
-     * How to sort.
-     * Possible value:
-     * config, unique, visits, pages, hits, bandwidth,
-     * not_viewed_pages, not_viewed_hits, not_viewed_bandwidth
+     * Specify sorting method. Possible values include:
+     *  config, unique, visits, pages, hits, bandwidth,
+     *  not_viewed_pages, not_viewed_hits, not_viewed_bandwidth
      */
     public $sort_default = 'bandwidth';
 
     /**
-     * Set number format.
+     * Set the number format.
      */
     public $dec_point     = '.';
     public $thousands_sep = ' ';
@@ -117,13 +115,13 @@ class awstatstotals
     public $FilterConfigs = [];
 
     /**
-     * Config names to ignore.
+     * Configuration names to ignore.
      */
     public $FilterIgnoreConfigs = [];
 
     /*
 
-    To read website configs from database, extend class and do something like:
+    To read website configurations from the database, extend the class and use the following approach:
 
     public function __construct()
     {
@@ -135,7 +133,7 @@ class awstatstotals
     */
 
     /**
-     * Main program
+     * Main program execution
      *
      * @param  array    $params  Optional, default $_GET
      * @return void     Echoed HTML
@@ -146,7 +144,7 @@ class awstatstotals
     }
 
     /**
-     * Get main HTML
+     * Retrieves the main HTML content.
      *
      * @param  array    $params  Optional, default $_GET
      * @return string   HTML
@@ -246,7 +244,7 @@ class awstatstotals
     }
 
     /**
-     * Get year data for each month
+     * Retrieves monthly data for each month within the year.
      *
      * @param  string   $config
      * @param  integer  $year
@@ -264,7 +262,7 @@ class awstatstotals
     }
 
     /**
-     * Get month data for each day
+     * Retrieves daily data for each day within the month.
      *
      * @param  string   $config
      * @param  integer  $year
@@ -304,7 +302,7 @@ class awstatstotals
     }
 
     /**
-     * Get month totals
+     * Calculates and returns the total values for each month.
      *
      * @param  string   $config
      * @param  integer  $year
@@ -350,7 +348,7 @@ class awstatstotals
     }
 
     /**
-     * Get full list of Pages-URLs
+     * Retrieves the complete list of Pages-URLs.
      *
      * @param  string   $config
      * @param  integer  $year
@@ -376,7 +374,7 @@ class awstatstotals
     }
 
     /**
-     * Get list of URLs with 404 errors
+     * Retrieves a list of URLs that resulted in 404 errors.
      *
      * @param  string   $config
      * @param  integer  $year
@@ -400,7 +398,7 @@ class awstatstotals
     }
 
     /**
-     * Get lines array from within BEGIN/END-block
+     * Extracts an array of lines contained within the BEGIN/END block.
      *
      * @param  string   $name  Block name
      * @param  string   $file  Config file name
@@ -412,13 +410,16 @@ class awstatstotals
         if (!empty($file)) {
             $handle = fopen($file, 'r');
             $is_block = false;
+            $begin = 'BEGIN_'.$name.' ';
+            $len = strlen($begin);
             while (!feof($handle)) {
                $line = trim((string) fgets($handle, 4096));
-               if (preg_match('/^BEGIN_'.$name.' \d+$/', $line)) {
+               if (substr($line, 0, $len) == $begin) {
                     $is_block = true;
-               } elseif ($line == 'END_'.$name) {
-                   break;
                } elseif ($is_block) {
+                    if ($line == 'END_'.$name) {
+                        break;
+                    }
                     $result[] = $line;
                }
             }
@@ -429,7 +430,7 @@ class awstatstotals
     }
 
     /**
-     * Get configs and files arrays
+     * Retrieves configuration settings and associated file arrays.
      *
      * @param  integer     $year
      * @param  int|string  $month
@@ -455,7 +456,7 @@ class awstatstotals
     }
 
     /**
-     * Get config file name or empty string when file is not found
+     * Returns the configuration file name or an empty string if the file is not found.
      *
      * @param  string   $config
      * @param  integer  $year
@@ -481,7 +482,7 @@ class awstatstotals
     }
 
     /**
-     * Split config file name
+     * Splits the configuration file name into its components.
      *
      * @param  string   $file
      * @return array(config, year, month)
@@ -496,7 +497,7 @@ class awstatstotals
     }
 
     /**
-     * Recursive directory parsing to include support for nested data directories
+     * Implements recursive directory parsing to support the inclusion of nested data directories.
      *
      * @param  string   $dir
      * @return array
@@ -526,7 +527,7 @@ class awstatstotals
     }
 
     /**
-     * Detect Language
+     * Automatically detect language.
      *
      * @param  string   $dir
      * @return string
@@ -554,7 +555,7 @@ class awstatstotals
     }
 
     /**
-     * Read Language Data
+     * Read language data.
      *
      * @param  string   $file
      * @return array
@@ -599,7 +600,7 @@ class awstatstotals
     }
 
     /**
-     * Add trailing slash
+     * Add a trailing slash.
      *
      * @param  string   $file
      * @return string
@@ -615,7 +616,7 @@ class awstatstotals
     }
 
     /**
-     * Remove trailing slash
+     * Remove the trailing slash.
      *
      * @param  string   $file
      * @return string
@@ -631,7 +632,7 @@ class awstatstotals
     }
 
     /**
-     * Byte Format
+     * Converts a byte count into a human-readable string with a value and units indicator.
      *
      * @param  int|float|string  $number
      * @param  integer  $decimals
@@ -658,7 +659,7 @@ class awstatstotals
     }
 
     /**
-     * Number Format
+     * Format a number with grouped thousands.
      *
      * @param  int|float|string  $number
      * @param  integer  $decimals
@@ -670,7 +671,7 @@ class awstatstotals
     }
 
     /**
-     * Formatting a number with leading zeros
+     * Format a number with leading zeros.
      *
      * @param  integer  $number
      * @return string
@@ -681,7 +682,7 @@ class awstatstotals
     }
 
     /**
-     * Fetch HTML
+     * Fetch HTML content.
      *
      * @param  int|string  $month
      * @param  integer  $year
@@ -712,7 +713,7 @@ class awstatstotals
     }
 
     /**
-     * Fetch HTML form
+     * Fetch the HTML form.
      *
      * @param  string   $script_url
      * @param  int|string  $month
@@ -756,7 +757,7 @@ class awstatstotals
     }
 
     /**
-     * Fetch HTML table header
+     * Fetch the HTML table header.
      *
      * @param  string   $url
      * @param  array    $message
@@ -790,7 +791,7 @@ class awstatstotals
     }
 
     /**
-     * Fetch HTML table body
+     * Fetch the HTML table body.
      *
      * @param  array    $rows
      * @param  array    $totals
@@ -836,7 +837,7 @@ class awstatstotals
     }
 
     /**
-     * Fetch HTML template
+     * Fetch the HTML template.
      *
      * @return string
      */
