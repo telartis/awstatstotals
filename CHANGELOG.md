@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.24.3] - 2024-08-04
+Improved the speed of the block_lines function and updated the readability of the comments.
+
 ## [1.24.2] - 2024-07-29
 Update version in all files
 
