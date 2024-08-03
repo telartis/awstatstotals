@@ -1,12 +1,11 @@
 <?php declare(strict_types=1);
 
 /**
- * Project:    AWStats PHP Wrapper Class
+ * Project:    PHP wrapper script to execute the locally installed AWStats Perl script.
  * File:       awstats.php
  * @author     Jeroen de Jong <jeroen@telartis.nl>
  * @copyright  2004-2024 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
- *
  */
 
 namespace telartis\awstatstotals;
