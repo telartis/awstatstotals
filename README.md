@@ -8,3 +8,5 @@ Additionally, it includes a PHP wrapper script to execute the locally installed 
 
 - AWStats official website: https://www.awstats.org/
 - AWStats Totals website: https://www.telartis.nl/en/awstats
+
+Requires PHP 8.3 or newer.
