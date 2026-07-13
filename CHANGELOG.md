@@ -1,13 +1,21 @@
 # Changelog
 
+## [1.25.0] - 2026-07-13
+- Bugfix: an unknown sort parameter caused a ValueError; it now falls back to the default sort
+- Bugfix: block_lines threw a TypeError when a data file could not be opened
+- Bugfix: parse_dir changed the working directory, which broke relative DirData paths; it also closes its directory handles now
+- Bugfix: byte_format displayed values of exactly 1024 in the previous unit (e.g. "1 024.00 KB" instead of "1.00 MB")
+- Escape the script URL before embedding it in the HTML form and sort links
+- Documented the PHP 8.3 requirement in the README
+
 ## [1.24.3] - 2024-08-04
 Improved the speed of the block_lines function and updated the readability of the comments.
 
 ## [1.24.2] - 2024-07-29
-Update version in all files
+Update the version in all files.
 
 ## [1.24.1] - 2024-07-29
-Improved the efficiency of reading configuration file blocks
+Improved the efficiency of reading configuration file blocks.
 
 ## [1.24.0] - 2024-07-27
 Bugfix: reading block lines did not always work with large data files
@@ -76,16 +84,16 @@ Fixed incorrect unique visitors in year view (ConteZero)
 Error_reporting setting can be E_ALL
 
 ## [1.4] - 2004-09-01
-Use english messages when no language files found
+Use English messages when no language files found.
 
 ## [1.3] - 2004-08-01
 Display yearly totals and last entry (Marco Gruber)
 
 ## [1.2] - 2004-07-01
-Register_globals setting can be off
+PHP register_globals setting can be off.
 
 ## [1.1] - 2004-06-01
-Use awstats language files to set your language
+Use awstats language files to set your language.
 
 ## [1.0] - 2004-05-13
 Initial version
