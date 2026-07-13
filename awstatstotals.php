@@ -8,7 +8,7 @@
  *             The interface features a month selection input form, allowing you to filter data by month,
  *             and offers the ability to sort each column.
  * @author     Jeroen de Jong <jeroen@telartis.nl>
- * @copyright  2004-2024 Telartis BV
+ * @copyright  2004-2026 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  *
  * Functions:
@@ -16,7 +16,7 @@
  * main_fetch(array $params = []): string
  * year_data(string $config, int $year): array
  * month_data(string $config, int $year, int $month, bool $complete_month = true): array
- * month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
+ * month_totals(string $config, int $year, int $month, ?int $default = null, string $file = ''): array
  * pages_url_list(string $config, int $year, int $month): array
  * errors404_list(string $config, int $year, int $month): array
  * block_lines(string $name, string $file): array
@@ -28,8 +28,8 @@
  * read_language_data(string $file): array
  * add_trailing_slash(string $file): string
  * remove_trailing_slash(string $file): string
- * byte_format($number, int $decimals = 2): string
- * num_format($number, int $decimals = 0): string
+ * byte_format(int|float|string $number, int $decimals = 2): string
+ * num_format(int|float|string $number, int $decimals = 0): string
  * lz(int $number): string
  * fetch(int|string $month, int $year, array $rows, array $totals, array $message): string
  * fetch_form(string $script_url, int|string $month, int $year, array $message): string
@@ -58,17 +58,17 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    const VERSION = '1.24.3';
+    public const string VERSION = '1.25.0';
 
     /**
      * Set this value to the directory where AWStats saves its database and working files.
      */
-    public $DirData = '/var/lib/awstats';
+    public string $DirData = '/var/lib/awstats';
 
     /**
      * The URL of the AWStats script.
      */
-    public $AWStatsURL = '/cgi-bin/awstats.pl';
+    public string $AWStatsURL = '/cgi-bin/awstats.pl';
 
     /**
      * Select your language. Possible values include:
@@ -83,45 +83,45 @@ class awstatstotals
      *  Welsh=wlk.
      *  First available language accepted by browser=auto
      */
-    public $Lang = 'auto';
+    public string $Lang = 'auto';
 
     /**
      * Set the directory path for language files.
      */
-    public $DirLang = '/usr/share/awstats/lang';
+    public string $DirLang = '/usr/share/awstats/lang';
 
     /**
      * Specify how to display unviewed traffic. Possible values include:
      *  ignore, columns, sum
      */
-    public $NotViewed = 'sum';
+    public string $NotViewed = 'sum';
 
     /**
      * Specify sorting method. Possible values include:
      *  config, unique, visits, pages, hits, bandwidth,
      *  not_viewed_pages, not_viewed_hits, not_viewed_bandwidth
      */
-    public $sort_default = 'bandwidth';
+    public string $sort_default = 'bandwidth';
 
     /**
      * Set the number format.
      */
-    public $dec_point     = '.';
-    public $thousands_sep = ' ';
+    public string $dec_point     = '.';
+    public string $thousands_sep = ' ';
 
     /**
      * Config names to filter. Shows all if empty array.
      */
-    public $FilterConfigs = [];
+    public array $FilterConfigs = [];
 
     /**
      * Configuration names to ignore.
      */
-    public $FilterIgnoreConfigs = [];
+    public array $FilterIgnoreConfigs = [];
 
     /*
 
-    To read website configurations from the database, extend the class and use the following approach:
+    To read website config-list from the database, extend the class and use the following approach:
 
     public function __construct()
     {
@@ -155,6 +155,11 @@ class awstatstotals
             $params = $_GET;
         }
         $sort  = isset($params['sort'])  ? preg_replace('/[^_a-z]/', '', $params['sort']) : $this->sort_default;
+        $valid = ['config', 'unique', 'visits', 'pages', 'hits', 'bandwidth',
+            'not_viewed_pages', 'not_viewed_hits', 'not_viewed_bandwidth'];
+        if (!in_array($sort, $valid)) {
+            $sort = $this->sort_default;
+        }
         $year  = isset($params['year'])  ? (int) $params['year']  : (int) date('Y');
         $month = isset($params['month']) ? (int) $params['month'] : (int) date('n');
         if (!$month) {
@@ -248,7 +253,8 @@ class awstatstotals
      *
      * @param  string   $config
      * @param  integer  $year
-     * @return array(yyyy-mm-01 => [config, visits, unique, pages, hits, bandwidth, not_viewed_...])
+     * @return array(string 'yyyy-mm-01' => [string config, ?int visits, ?int unique,
+     *     int pages, int hits, int bandwidth, int not_viewed_pages, int not_viewed_hits, int not_viewed_bandwidth])
      */
     public function year_data(string $config, int $year): array
     {
@@ -268,7 +274,7 @@ class awstatstotals
      * @param  integer  $year
      * @param  integer  $month
      * @param  boolean  $complete_month  Optional, default TRUE
-     * @return array(yyyy-mm-dd => [pages, hits, bandwidth, visits])
+     * @return array(string 'yyyy-mm-dd' => [?int pages, ?int hits, ?int bandwidth, ?int visits])
      */
     public function month_data(string $config, int $year, int $month, bool $complete_month = true): array
     {
@@ -307,11 +313,12 @@ class awstatstotals
      * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
-     * @param  mixed    $default  Optional, default NULL
+     * @param  ?int     $default  Optional, default NULL
      * @param  string   $file     Optional, default ''
-     * @return array(config, visits, unique, pages, hits, bandwidth, not_viewed_pages, not_viewed_hits, not_viewed_bandwidth)
+     * @return array(string config, ?int visits, ?int unique,
+     *     int pages, int hits, int bandwidth, int not_viewed_pages, int not_viewed_hits, int not_viewed_bandwidth)
      */
-    public function month_totals(string $config, int $year, int $month, $default = null, string $file = ''): array
+    public function month_totals(string $config, int $year, int $month, ?int $default = null, string $file = ''): array
     {
         if (empty($file)) {
             $file = $this->get_filename($config, $year, $month);
@@ -319,6 +326,9 @@ class awstatstotals
         $visits = $default;
         $unique = $default;
         foreach ($this->block_lines('GENERAL', $file) as $line) {
+            if (!str_contains($line, ' ')) {
+                continue;
+            }
             [$key, $val] = explode(' ', $line, 2);
             if ($key == 'TotalVisits') $visits = (int) $val;
             if ($key == 'TotalUnique') $unique = (int) $val;
@@ -341,7 +351,7 @@ class awstatstotals
             'not_viewed_bandwidth',
         ];
         foreach ($keys as $i => $key) {
-            $result[$key] = array_sum(array_column($rows, $i + 1));
+            $result[$key] = (int) array_sum(array_column($rows, $i + 1));
         }
 
         return $result;
@@ -353,7 +363,7 @@ class awstatstotals
      * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
-     * @return array(url, pages, bandwidth, entry, exit)
+     * @return array(string url, int pages, int bandwidth, int entry, int exit)
      */
     public function pages_url_list(string $config, int $year, int $month): array
     {
@@ -362,7 +372,7 @@ class awstatstotals
         foreach ($this->block_lines('SIDER', $file) as $line) {
             [$url, $pages, $bandwidth, $entry, $exit] = explode(' ', $line);
             $data[] = [
-                'url'       => $url,
+                'url'       => (string) $url,
                 'pages'     => (int) $pages,
                 'bandwidth' => (int) $bandwidth,
                 'entry'     => (int) $entry,
@@ -379,7 +389,7 @@ class awstatstotals
      * @param  string   $config
      * @param  integer  $year
      * @param  integer  $month
-     * @return array(url, hits, referer)
+     * @return array(string url, int hits, string referer)
      */
     public function errors404_list(string $config, int $year, int $month): array
     {
@@ -388,9 +398,9 @@ class awstatstotals
         foreach ($this->block_lines('SIDER_404', $file) as $line) {
             [$url, $hits, $referer] = explode(' ', $line);
             $data[] = [
-                'url'     => $url, // URL with 404 errors
+                'url'     => (string) $url, // URL with 404 errors
                 'hits'    => (int) $hits,
-                'referer' => $referer, // Last URL referer
+                'referer' => (string) $referer, // Last URL referer
             ];
         }
 
@@ -407,8 +417,7 @@ class awstatstotals
     public function block_lines(string $name, string $file): array
     {
         $result = [];
-        if (!empty($file)) {
-            $handle = fopen($file, 'r');
+        if (!empty($file) && ($handle = fopen($file, 'r'))) {
             $is_block = false;
             $begin = 'BEGIN_'.$name.' ';
             $len = strlen($begin);
@@ -430,11 +439,11 @@ class awstatstotals
     }
 
     /**
-     * Retrieves configuration settings and associated file arrays.
+     * Retrieves configs-array and files-array.
      *
      * @param  integer     $year
      * @param  int|string  $month
-     * @return array($configs, $files)
+     * @return array(array $configs, array $files)
      */
     public function get_configs_files(int $year, $month): array
     {
@@ -485,7 +494,7 @@ class awstatstotals
      * Splits the configuration file name into its components.
      *
      * @param  string   $file
-     * @return array(config, year, month)
+     * @return array(string config, int year, int month)
      */
     public function split_filename(string $file): array
     {
@@ -493,12 +502,13 @@ class awstatstotals
             ? $match
             : [null, 0, 0, ''];
 
-        return [$config, (int) $year, (int) $month];
+        return [(string) $config, (int) $year, (int) $month];
     }
 
     /**
      * Implements recursive directory parsing to support the inclusion of nested data directories.
      *
+     * @recursive
      * @param  string   $dir
      * @return array
      */
@@ -511,15 +521,13 @@ class awstatstotals
                 while (($file = readdir($dh)) !== false) {
                     if (!preg_match('/^\./s', $file)) {
                         if (is_dir($dir.$file)) {
-                            $newdir = $dir.$file.'/';
-                            chdir($newdir);
-                            $files = array_merge($files, $this->parse_dir($newdir));
+                            $files = array_merge($files, $this->parse_dir($dir.$file.'/'));
                         } else {
                             $files[] = $dir.$file;
                         }
                     }
                 }
-                chdir($dir);
+                closedir($dh);
             }
         }
 
@@ -608,7 +616,7 @@ class awstatstotals
     public function add_trailing_slash(string $file): string
     {
         $file = trim($file);
-        if (substr($file, -1) != '/') {
+        if (!str_ends_with($file, '/')) {
             $file .= '/';
         }
 
@@ -624,7 +632,7 @@ class awstatstotals
     public function remove_trailing_slash(string $file): string
     {
         $file = trim($file);
-        if (substr($file, -1) == '/') {
+        if (str_ends_with($file, '/')) {
             $file = substr($file, 0, -1);
         }
 
@@ -638,7 +646,7 @@ class awstatstotals
      * @param  integer  $decimals
      * @return string
      */
-    public function byte_format($number, int $decimals = 2): string
+    public function byte_format(int|float|string $number, int $decimals = 2): string
     {
         // kilo, mega, giga, tera, peta, exa, zetta, yotta, ronna, quetta
         $prefix_arr = ['','K','M','G','T','P','E','Z','Y','R','Q'];
@@ -647,7 +655,7 @@ class awstatstotals
             $result = 0;
         } else {
             $value = round((float) $number, $decimals);
-            while ($value > 1024) {
+            while ($value >= 1024) {
                 $value /= 1024;
                 $i++;
             }
@@ -665,7 +673,7 @@ class awstatstotals
      * @param  integer  $decimals
      * @return string
      */
-    public function num_format($number, int $decimals = 0): string
+    public function num_format(int|float|string $number, int $decimals = 0): string
     {
         return number_format((float) $number, $decimals, $this->dec_point, $this->thousands_sep);
     }
@@ -691,12 +699,12 @@ class awstatstotals
      * @param  array    $message
      * @return string
      */
-    public function fetch($month, int $year, array $rows, array $totals, array $message): string
+    public function fetch(int|string $month, int $year, array $rows, array $totals, array $message): string
     {
-        $script_url = (string) filter_input(INPUT_SERVER, 'SCRIPT_URL',
+        $script_url = htmlspecialchars((string) filter_input(INPUT_SERVER, 'SCRIPT_URL',
             FILTER_DEFAULT,
             FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK
-        );
+        ), ENT_QUOTES);
 
         $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
         $config_url = $this->AWStatsURL.'?month='.$month.'&year='.$year.'&config=';
@@ -721,7 +729,7 @@ class awstatstotals
      * @param  array    $message
      * @return string
      */
-    public function fetch_form(string $script_url, $month, int $year, array $message): string
+    public function fetch_form(string $script_url, int|string $month, int $year, array $message): string
     {
         $html = '<form action="'.$script_url.'">
 <table class="form b" border="0" cellpadding="2" cellspacing="0" width="100%">
@@ -865,7 +873,7 @@ a.h     { color: black }
 [content]
 
 <br><br><center><b>AWStats Totals '.self::VERSION.'</b> - <a
-href="https://www.telartis.nl/en/awstats">&copy; 2004-2024 Telartis BV</a></center><br><br>
+href="https://www.telartis.nl/en/awstats">&copy; 2004-2026 Telartis BV</a></center><br><br>
 
 </body>
 </html>';
