@@ -1,5 +1,13 @@
 # Changelog
 
+## awstats.php [1.5] - 2026-07-14
+- Security: fix command injection in the AWStats wrapper. The filter parameters
+  (hostfilter, urlfilter, filterrawlog, etc.) were only checked against a
+  blocklist regex that still allowed $(...), &&, redirects and newlines, so a
+  crafted request could run arbitrary shell commands. All GET values are now
+  passed through escapeshellarg(); the AWStatsFile path is escaped too. The
+  format patterns are kept as input validation. Also guard against array input.
+
 ## [1.25.0] - 2026-07-13
 - Bugfix: an unknown sort parameter caused a ValueError; it now falls back to the default sort
 - Bugfix: block_lines threw a TypeError when a data file could not be opened
