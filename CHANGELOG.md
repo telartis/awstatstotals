@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.25.1] - 2026-07-14
+Update awstats.php to version 1.5
+
 ## awstats.php [1.5] - 2026-07-14
 - Security: fix command injection in the AWStats wrapper. The filter parameters
   (hostfilter, urlfilter, filterrawlog, etc.) were only checked against a
