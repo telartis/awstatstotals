@@ -4,7 +4,7 @@
  * Project:    PHP wrapper script to execute the locally installed AWStats Perl script.
  * File:       awstats.php
  * @author     Jeroen de Jong <jeroen@telartis.nl>
- * @copyright  2004-2024 Telartis BV
+ * @copyright  2004-2026 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  */
 
@@ -22,18 +22,18 @@ namespace telartis\awstatstotals;
 //
 // - OR -
 //
-// 2) Uncomment these two lines if you want to call this class/script directly:
+// 2) Uncomment these two lines if you wish to call this class/script directly:
 // $obj = new awstats;
 // $obj->main();
 
 class awstats
 {
-    const VERSION = '1.4';
+    public const string VERSION = '1.5';
 
     /**
      * The location of the AWStats script.
      */
-    public $AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
+    public string $AWStatsFile = '/usr/local/awstats/cgi-bin/awstats.pl';
 
     public function main(): void
     {
@@ -53,7 +53,7 @@ class awstats
         $param .= $this->addfilterparam('refererpagesfilterex');
         $param .= $this->addfilterparam('filterrawlog');
 
-        passthru('perl '.$this->AWStatsFile.$param);
+        passthru('perl '.escapeshellarg($this->AWStatsFile).$param);
     }
 
     public function configparam(): string
@@ -64,10 +64,9 @@ class awstats
     public function addparam(string $name, string $pattern, bool $allways = false): string
     {
         $result = $allways ? ' -'.$name : '';
-        if (isset($_GET[$name])) {
-            if (preg_match($pattern, $_GET[$name])) {
-                $result .= ($allways ? '' : ' -'.$name).'='.$_GET[$name];
-            }
+        if (isset($_GET[$name]) && is_string($_GET[$name]) && preg_match($pattern, $_GET[$name])) {
+            // escapeshellarg guards the shell; the pattern only validates the format
+            $result .= ($allways ? '' : ' -'.$name).'='.escapeshellarg($_GET[$name]);
         }
 
         return $result;
