@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.25.2] - 2026-09-12
+- Bugfix: the DOCTYPE public identifier was unquoted, which put browsers in quirks mode
+- Bugfix: block_lines read at most 4096 bytes per line, so a SIDER line with a very long URL was split in two and misparsed
+- Malformed DAY, SIDER and SIDER_404 lines no longer raise undefined-key warnings (missing fields default to 0 / empty)
+- Config names are HTML-escaped in the table and URL-encoded in the AWStats links; `&` in URLs is written as `&amp;`
+
 ## [1.25.1] - 2026-07-14
 Update awstats.php to version 1.5
 
