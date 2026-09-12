@@ -58,7 +58,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    public const string VERSION = '1.25.1';
+    public const string VERSION = '1.25.2';
 
     /**
      * Set this value to the directory where AWStats saves its database and working files.
@@ -294,7 +294,10 @@ class awstatstotals
         }
         $file = $this->get_filename($config, $year, $month);
         foreach ($this->block_lines('DAY', $file) as $line) {
-            [$dt, $pages, $hits, $bandwidth, $visits] = explode(' ', $line);
+            [$dt, $pages, $hits, $bandwidth, $visits] = array_pad(explode(' ', $line), 5, 0);
+            if (strlen($dt) != 8) {
+                continue; // malformed line
+            }
             $date = substr($dt, 0, 4).'-'.substr($dt, 4, 2).'-'.substr($dt, 6, 2); // convert yyyymmdd to yyyy-mm-dd
             $data[$date] = [
                 'pages'     => (int) $pages,
@@ -370,7 +373,10 @@ class awstatstotals
         $data = [];
         $file = $this->get_filename($config, $year, $month);
         foreach ($this->block_lines('SIDER', $file) as $line) {
-            [$url, $pages, $bandwidth, $entry, $exit] = explode(' ', $line);
+            if ($line === '') {
+                continue;
+            }
+            [$url, $pages, $bandwidth, $entry, $exit] = array_pad(explode(' ', $line), 5, 0);
             $data[] = [
                 'url'       => (string) $url,
                 'pages'     => (int) $pages,
@@ -396,7 +402,10 @@ class awstatstotals
         $data = [];
         $file = $this->get_filename($config, $year, $month);
         foreach ($this->block_lines('SIDER_404', $file) as $line) {
-            [$url, $hits, $referer] = explode(' ', $line);
+            if ($line === '') {
+                continue;
+            }
+            [$url, $hits, $referer] = array_pad(explode(' ', $line, 3), 3, '');
             $data[] = [
                 'url'     => (string) $url, // URL with 404 errors
                 'hits'    => (int) $hits,
@@ -422,7 +431,7 @@ class awstatstotals
             $begin = 'BEGIN_'.$name.' ';
             $len = strlen($begin);
             while (!feof($handle)) {
-               $line = trim((string) fgets($handle, 4096));
+               $line = trim((string) fgets($handle)); // no length limit: a SIDER line with a long URL must stay one line
                if (substr($line, 0, $len) == $begin) {
                     $is_block = true;
                } elseif ($is_block) {
@@ -706,8 +715,8 @@ class awstatstotals
             FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK
         ), ENT_QUOTES);
 
-        $sort_url   =       $script_url.'?month='.$month.'&year='.$year.'&sort=';
-        $config_url = $this->AWStatsURL.'?month='.$month.'&year='.$year.'&config=';
+        $sort_url   =       $script_url.'?month='.$month.'&amp;year='.$year.'&amp;sort=';
+        $config_url = htmlspecialchars($this->AWStatsURL, ENT_QUOTES).'?month='.$month.'&amp;year='.$year.'&amp;config=';
 
         return str_replace(
             '[content]',
@@ -811,8 +820,9 @@ class awstatstotals
     {
         $html = '';
         foreach ($rows as $row) {
+            $config = htmlspecialchars($row['config'], ENT_QUOTES);
             $html .= '<tr>'.
-                '<td class="l"><a href="'.$url.$row['config'].'">'.$row['config'].'</a>'.
+                '<td class="l"><a href="'.$url.rawurlencode($row['config']).'">'.$config.'</a>'.
                 '<td>'.$this->num_format($row['unique']).
                 '<td>'.$this->num_format($row['visits']).
                 '<td>'.$this->num_format($row['pages']).
@@ -851,7 +861,7 @@ class awstatstotals
      */
     public function fetch_template(): string
     {
-        return '<!DOCTYPE HTML PUBLIC -//W3C//DTD HTML 4.01 Transitional//EN>
+        return '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 <title>AWStats Totals</title>
