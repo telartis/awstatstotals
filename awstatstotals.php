@@ -58,7 +58,7 @@ namespace telartis\awstatstotals;
 
 class awstatstotals
 {
-    public const string VERSION = '1.25.2';
+    public const string VERSION = '1.25.3';
 
     /**
      * Set this value to the directory where AWStats saves its database and working files.
@@ -125,9 +125,9 @@ class awstatstotals
 
     public function __construct()
     {
-        $sth = $dbh->prepare('SELECT config FROM websites WHERE user=:id)');
-        $sth->execute();
-        $this->FilterConfigs = $sth->fetchColumn();
+        $sth = $dbh->prepare('SELECT config FROM websites WHERE user=:id');
+        $sth->execute(['id' => $user_id]);
+        $this->FilterConfigs = $sth->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     */
@@ -154,15 +154,20 @@ class awstatstotals
         if (!$params) {
             $params = $_GET;
         }
-        $sort  = isset($params['sort'])  ? preg_replace('/[^_a-z]/', '', $params['sort']) : $this->sort_default;
         $valid = ['config', 'unique', 'visits', 'pages', 'hits', 'bandwidth',
             'not_viewed_pages', 'not_viewed_hits', 'not_viewed_bandwidth'];
-        if (!in_array($sort, $valid)) {
-            $sort = $this->sort_default;
+        // a mistyped sort_default must not reach array_multisort (ValueError):
+        $sort_default = in_array($this->sort_default, $valid, true) ? $this->sort_default : 'bandwidth';
+        $sort = $params['sort'] ?? $sort_default;
+        if (!in_array($sort, $valid, true)) {
+            $sort = $sort_default;
         }
-        $year  = isset($params['year'])  ? (int) $params['year']  : (int) date('Y');
-        $month = isset($params['month']) ? (int) $params['month'] : (int) date('n');
-        if (!$month) {
+        $year = is_scalar($params['year'] ?? null) ? (int) $params['year'] : 0;
+        if ($year < 1000 || $year > 9999) {
+            $year = (int) date('Y'); // data file names hold a four-digit year
+        }
+        $month = is_scalar($params['month'] ?? null) ? (int) $params['month'] : (int) date('n');
+        if ($month < 1 || $month > 12) {
             $month = 'all';
         }
 
@@ -281,7 +286,7 @@ class awstatstotals
         $data = [];
         if (checkdate($month, 1, $year) && $complete_month) {
             // initialize data array with null values for all days in the given month:
-            $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            $days = (int) date('t', mktime(0, 0, 0, $month, 1, $year));
             for ($day = 1; $day <= $days; $day++) {
                 $date = $year.'-'.$this->lz($month).'-'.$this->lz($day);
                 $data[$date] = [
@@ -431,15 +436,15 @@ class awstatstotals
             $begin = 'BEGIN_'.$name.' ';
             $len = strlen($begin);
             while (!feof($handle)) {
-               $line = trim((string) fgets($handle)); // no length limit: a SIDER line with a long URL must stay one line
-               if (substr($line, 0, $len) == $begin) {
+                $line = trim((string) fgets($handle)); // no length limit: a SIDER line with a long URL must stay one line
+                if (substr($line, 0, $len) == $begin) {
                     $is_block = true;
-               } elseif ($is_block) {
+                } elseif ($is_block) {
                     if ($line == 'END_'.$name) {
                         break;
                     }
                     $result[] = $line;
-               }
+                }
             }
             fclose($handle);
         }
@@ -580,40 +585,40 @@ class awstatstotals
     public function read_language_data(string $file): array
     {
         $message = [];
-        if (!empty($file) && file_exists($file)) {
+        if (!empty($file) && is_file($file)) {
             foreach (file($file) as $line) {
-                if (preg_match('/^message(\d+)=(.*)$/', $line, $match)) {
-                    $message[$match[1]] = $match[2];
+                if (preg_match('/^message(\d+)=(.*)$/', rtrim($line), $match)) {
+                    $message[(int) $match[1]] = $match[2];
                 }
             }
         }
-        if (!$message) {
-            $message[7]   = 'Statistics for';
-            $message[10]  = 'Number of visits';
-            $message[11]  = 'Unique visitors';
-            $message[56]  = 'Pages';
-            $message[57]  = 'Hits';
-            $message[60]  = 'Jan';
-            $message[61]  = 'Feb';
-            $message[62]  = 'Mar';
-            $message[63]  = 'Apr';
-            $message[64]  = 'May';
-            $message[65]  = 'Jun';
-            $message[66]  = 'Jul';
-            $message[67]  = 'Aug';
-            $message[68]  = 'Sep';
-            $message[69]  = 'Oct';
-            $message[70]  = 'Nov';
-            $message[71]  = 'Dec';
-            $message[75]  = 'Bandwidth';
-            $message[102] = 'Total';
-            $message[115] = 'OK';
-            $message[133] = 'Reported period';
-            $message[160] = 'Viewed traffic';
-            $message[161] = 'Not viewed traffic';
-        }
 
-        return $message;
+        // English text for every message the language file does not define:
+        return $message + [
+            7   => 'Statistics for',
+            10  => 'Number of visits',
+            11  => 'Unique visitors',
+            56  => 'Pages',
+            57  => 'Hits',
+            60  => 'Jan',
+            61  => 'Feb',
+            62  => 'Mar',
+            63  => 'Apr',
+            64  => 'May',
+            65  => 'Jun',
+            66  => 'Jul',
+            67  => 'Aug',
+            68  => 'Sep',
+            69  => 'Oct',
+            70  => 'Nov',
+            71  => 'Dec',
+            75  => 'Bandwidth',
+            102 => 'Total',
+            115 => 'OK',
+            133 => 'Reported period',
+            160 => 'Viewed traffic',
+            161 => 'Not viewed traffic',
+        ];
     }
 
     /**
@@ -659,20 +664,17 @@ class awstatstotals
     {
         // kilo, mega, giga, tera, peta, exa, zetta, yotta, ronna, quetta
         $prefix_arr = ['','K','M','G','T','P','E','Z','Y','R','Q'];
+        $last = count($prefix_arr) - 1;
+        $value = (float) $number;
         $i = 0;
-        if ($number == 0) {
-            $result = 0;
-        } else {
-            $value = round((float) $number, $decimals);
-            while ($value >= 1024) {
-                $value /= 1024;
-                $i++;
-            }
-            $result = $this->num_format($value, $decimals);
+        // compare the rounded value: 1 048 575 bytes is "1.00 MB", not "1 024.00 KB"
+        while ($i < $last && round($value, $decimals) >= 1024) {
+            $value /= 1024;
+            $i++;
         }
-        $result .= ' '.$prefix_arr[$i].'B'.($i == 0 ? 'ytes' : '');
 
-        return $result;
+        // bytes are whole numbers, so no decimals there
+        return $this->num_format($value, $i == 0 ? 0 : $decimals).' '.$prefix_arr[$i].'B'.($i == 0 ? 'ytes' : '');
     }
 
     /**
@@ -748,19 +750,25 @@ class awstatstotals
 <tr>
 <th>'.$message[133].':</th>
 <td class="l">';
-    $html .= '<select class="f" name="month">'."\n";
-    for ($i = 1; $i <= 12; $i++) {
-        $html .= '<option value="'.$i.'"'.($month == $i ? ' selected' : '').'>'.$message[$i + 59]."\n";
-    }
-    $html .= '<option value="all"'.($month == 'all' ? ' selected' : '').'>-'."\n";
-    $html .= '</select>'."\n";
+        $html .= '<select class="f" name="month">'."\n";
+        for ($i = 1; $i <= 12; $i++) {
+            $html .= '<option value="'.$i.'"'.($month == $i ? ' selected' : '').'>'.$message[$i + 59]."\n";
+        }
+        $html .= '<option value="all"'.($month == 'all' ? ' selected' : '').'>-'."\n";
+        $html .= '</select>'."\n";
 
-    $html .= '<select class="f" name="year">'."\n";
-    for ($curyear = date('Y'), $i = $curyear - 4; $i <= $curyear; $i++) {
-        $html .= '<option value="'.$i.'"'.($year == $i ? ' selected' : '').'>'.$i."\n";
-    }
-    $html .= '</select>'."\n";
-    $html .= '<input type="submit" class="f" value="'.$message[115].'">
+        $curyear = (int) date('Y');
+        $years = range($curyear - 4, $curyear);
+        if (!in_array($year, $years, true)) {
+            $years[] = $year; // keep the reported year selected when it is outside the default range
+            sort($years);
+        }
+        $html .= '<select class="f" name="year">'."\n";
+        foreach ($years as $i) {
+            $html .= '<option value="'.$i.'"'.($year == $i ? ' selected' : '').'>'.$i."\n";
+        }
+        $html .= '</select>'."\n";
+        $html .= '<input type="submit" class="f" value="'.$message[115].'">
 </td></tr>
 </table>
 
