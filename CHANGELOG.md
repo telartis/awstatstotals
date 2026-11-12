@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.25.3] - 2026-11-12
+- Bugfix: a mistyped `sort_default` caused a ValueError; it now falls back to bandwidth. A sort parameter that is not a string no longer raises a TypeError
+- Bugfix: a language file that lacks some messages raised undefined-key warnings; missing messages now use the English text. Language files with CRLF line endings no longer leave a carriage return in the messages
+- Bugfix: byte_format displayed values that round up to 1024 in the previous unit (e.g. "1 024.00 KB" for 1 048 575 bytes); byte values are shown without decimals
+- Bugfix: a reported year outside the last five years was not selected in the form, so OK silently switched to another year
+- A month outside 1-12 reports the whole year; a year that is not four digits falls back to the current year
+- month_data no longer needs the PHP calendar extension
+- Corrected the database example in the class comment
+
 ## [1.25.2] - 2026-09-12
 - Bugfix: the DOCTYPE public identifier was unquoted, which put browsers in quirks mode
 - Bugfix: block_lines read at most 4096 bytes per line, so a SIDER line with a very long URL was split in two and misparsed
