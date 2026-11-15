@@ -3,7 +3,7 @@
 /**
  * Project:    PHP wrapper script to execute the locally installed AWStats Perl script.
  * File:       awstats.php
- * @author     Jeroen de Jong <jeroen@telartis.nl>
+ * @author     Jeroen de Jong
  * @copyright  2004-2026 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  */
