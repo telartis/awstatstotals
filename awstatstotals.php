@@ -7,7 +7,7 @@
  *             (Unique visitors, Number of visits, Pages, Hits, and Bandwidth) for multiple websites.
  *             The interface features a month selection input form, allowing you to filter data by month,
  *             and offers the ability to sort each column.
- * @author     Jeroen de Jong <jeroen@telartis.nl>
+ * @author     Jeroen de Jong
  * @copyright  2004-2026 Telartis BV
  * @link       https://www.telartis.nl/en/awstats
  *
